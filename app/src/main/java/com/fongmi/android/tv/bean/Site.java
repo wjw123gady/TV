@@ -15,7 +15,7 @@ import com.google.gson.annotations.SerializedName;
 import java.util.Collections;
 import java.util.List;
 
-@Entity(ignoredColumns = {"type", "api", "playUrl", "ext", "categories"})
+@Entity(ignoredColumns = {"type", "api", "playUrl", "ext", "categories", "jar"})
 public class Site {
 
     @NonNull
@@ -36,6 +36,8 @@ public class Site {
     private Integer filterable;
     @SerializedName("ext")
     private String ext;
+    @SerializedName("jar")
+    private String jar;
     @SerializedName("categories")
     private List<String> categories;
 
@@ -48,6 +50,13 @@ public class Site {
     public static Site get(String key) {
         Site site = new Site();
         site.setKey(key);
+        return site;
+    }
+
+    public static Site get(String key, String name) {
+        Site site = new Site();
+        site.setKey(key);
+        site.setName(name);
         return site;
     }
 
@@ -109,6 +118,10 @@ public class Site {
 
     public void setExt(String ext) {
         this.ext = ext;
+    }
+
+    public String getJar() {
+        return TextUtils.isEmpty(jar) ? "" : jar;
     }
 
     public List<String> getCategories() {

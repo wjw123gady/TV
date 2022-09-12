@@ -6,30 +6,26 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.leanback.widget.Presenter;
 
-import com.fongmi.android.tv.databinding.AdapterWordBinding;
+import com.fongmi.android.tv.bean.Collect;
+import com.fongmi.android.tv.databinding.AdapterFilterBinding;
 
-public class WordPresenter extends Presenter {
-
-    private final OnClickListener mListener;
-
-    public WordPresenter(OnClickListener listener) {
-        this.mListener = listener;
-    }
+public class CollectPresenter extends Presenter {
 
     public interface OnClickListener {
-        void onItemClick(String text);
+
+        void onItemClick(Collect item);
     }
 
     @Override
     public Presenter.ViewHolder onCreateViewHolder(ViewGroup parent) {
-        return new ViewHolder(AdapterWordBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false));
+        return new ViewHolder(AdapterFilterBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false));
     }
 
     @Override
     public void onBindViewHolder(Presenter.ViewHolder viewHolder, Object object) {
+        Collect item = (Collect) object;
         ViewHolder holder = (ViewHolder) viewHolder;
-        holder.binding.text.setText(object.toString());
-        setOnClickListener(holder, view -> mListener.onItemClick(object.toString()));
+        holder.binding.text.setText(item.getSite().getName());
     }
 
     @Override
@@ -38,9 +34,9 @@ public class WordPresenter extends Presenter {
 
     public static class ViewHolder extends Presenter.ViewHolder {
 
-        private final AdapterWordBinding binding;
+        private final AdapterFilterBinding binding;
 
-        public ViewHolder(@NonNull AdapterWordBinding binding) {
+        public ViewHolder(@NonNull AdapterFilterBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
         }

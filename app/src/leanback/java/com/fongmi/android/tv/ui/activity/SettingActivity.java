@@ -23,7 +23,8 @@ import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.databinding.ActivitySettingBinding;
 import com.fongmi.android.tv.event.RefreshEvent;
-import com.fongmi.android.tv.impl.SettingCallback;
+import com.fongmi.android.tv.impl.ConfigCallback;
+import com.fongmi.android.tv.impl.SiteCallback;
 import com.fongmi.android.tv.net.Callback;
 import com.fongmi.android.tv.ui.custom.dialog.ConfigDialog;
 import com.fongmi.android.tv.ui.custom.dialog.HistoryDialog;
@@ -31,8 +32,9 @@ import com.fongmi.android.tv.ui.custom.dialog.SiteDialog;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.Prefers;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.Updater;
 
-public class SettingActivity extends BaseActivity implements SettingCallback {
+public class SettingActivity extends BaseActivity implements ConfigCallback, SiteCallback {
 
     private final ActivityResultLauncher<String> launcherString = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> loadConfig());
     private final ActivityResultLauncher<Intent> launcherIntent = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> loadConfig());
@@ -52,7 +54,9 @@ public class SettingActivity extends BaseActivity implements SettingCallback {
     protected void initView() {
         mBinding.url.setText(Prefers.getUrl());
         mBinding.home.setText(ApiConfig.getHomeName());
+        mBinding.type.setText(ResUtil.getStringArray(R.array.select_render)[Prefers.getRender()]);
         mBinding.compress.setText(ResUtil.getStringArray(R.array.select_thumbnail)[Prefers.getThumbnail()]);
+        mBinding.versionName.setText(BuildConfig.VERSION_NAME);
     }
 
     @Override
@@ -60,7 +64,9 @@ public class SettingActivity extends BaseActivity implements SettingCallback {
         mBinding.site.setOnClickListener(view -> SiteDialog.show(this));
         mBinding.config.setOnClickListener(view -> ConfigDialog.show(this));
         mBinding.history.setOnClickListener(view -> HistoryDialog.show(this));
+        mBinding.version.setOnClickListener(view-> Updater.create(this).force().start());
         mBinding.thumbnail.setOnClickListener(this::setThumbnail);
+        mBinding.render.setOnClickListener(this::setRender);
     }
 
     @Override
@@ -127,5 +133,13 @@ public class SettingActivity extends BaseActivity implements SettingCallback {
         Prefers.putThumbnail(index);
         mBinding.compress.setText(array[index]);
         RefreshEvent.image();
+    }
+
+    public void setRender(View view) {
+        CharSequence[] array = ResUtil.getStringArray(R.array.select_render);
+        int index = Prefers.getRender();
+        index = index == 1 ? 0 : ++index;
+        Prefers.putRender(index);
+        mBinding.type.setText(array[index]);
     }
 }

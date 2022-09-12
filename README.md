@@ -14,3 +14,6 @@ https://github.com/CatVodTVOfficial/CatVodTVJarLoader
     spider.jar
     /spider.jar
     ./spider.jar
+    
+### How to build
+Use dev branch

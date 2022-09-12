@@ -58,15 +58,17 @@ public class Result {
     private String flag;
     @SerializedName("url")
     private String url;
+    @SerializedName("subt")
+    private String sub;
 
     public static Result fromJson(String str) {
         try {
             Type type = new TypeToken<LinkedHashMap<String, List<Filter>>>() {}.getType();
             Gson gson = new GsonBuilder().registerTypeAdapter(type, new FiltersAdapter()).create();
             Result result = gson.fromJson(str, Result.class);
-            return result == null ? new Result() : result;
+            return result == null ? empty() : result;
         } catch (Exception e) {
-            return new Result();
+            return empty();
         }
     }
 
@@ -74,7 +76,7 @@ public class Result {
         try {
             return new Persister().read(Result.class, str);
         } catch (Exception e) {
-            return new Result();
+            return empty();
         }
     }
 
@@ -86,8 +88,12 @@ public class Result {
         try {
             return new Gson().fromJson(str, Result.class);
         } catch (Exception e) {
-            return new Result();
+            return empty();
         }
+    }
+
+    public static Result empty() {
+        return new Result();
     }
 
     public List<Class> getTypes() {
@@ -152,6 +158,10 @@ public class Result {
 
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public String getSub() {
+        return TextUtils.isEmpty(sub) ? "" : sub;
     }
 
     public Map<String, String> getHeaders() {

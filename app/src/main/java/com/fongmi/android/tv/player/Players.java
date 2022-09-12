@@ -39,8 +39,8 @@ public class Players implements Player.Listener, ParseTask.Callback {
     public void init() {
         builder = new StringBuilder();
         webView = new CustomWebView(App.get());
-        exoPlayer = new ExoPlayer.Builder(App.get()).build();
         formatter = new Formatter(builder, Locale.getDefault());
+        exoPlayer = ExoUtil.create();
         exoPlayer.addListener(this);
     }
 
@@ -74,15 +74,18 @@ public class Players implements Player.Listener, ParseTask.Callback {
     }
 
     public String getSpeed() {
-        return String.format(Locale.getDefault(), "%.2f", exoPlayer.getPlaybackParameters().speed);
+        return String.format(Locale.getDefault(), "%.2f", exo().getPlaybackParameters().speed);
     }
 
-    public String addSpeed() {
-        float speed = exoPlayer.getPlaybackParameters().speed;
+    public void addSpeed() {
+        float speed = exo().getPlaybackParameters().speed;
         float addon = speed >= 2 ? 1f : 0.25f;
         speed = speed >= 5 ? 0.5f : speed + addon;
-        exoPlayer.setPlaybackSpeed(speed);
-        return getSpeed();
+        exo().setPlaybackSpeed(speed);
+    }
+
+    public void resetSpeed() {
+        exo().setPlaybackSpeed(1f);
     }
 
     public String getTime(long time) {
@@ -97,73 +100,70 @@ public class Players implements Player.Listener, ParseTask.Callback {
     }
 
     public long getCurrentPosition() {
-        return exoPlayer.getCurrentPosition();
+        return exo().getCurrentPosition();
     }
 
     public long getDuration() {
-        return exoPlayer.getDuration();
+        return exo().getDuration();
     }
 
     public void seekTo(int time) {
-        exoPlayer.seekTo(getCurrentPosition() + time);
+        exo().seekTo(getCurrentPosition() + time);
     }
 
     public void seekTo(long time) {
-        exoPlayer.seekTo(time);
+        exo().seekTo(time);
     }
 
     public boolean isPlaying() {
-        return exoPlayer.isPlaying();
+        return exo().isPlaying();
     }
 
     public boolean isIdle() {
-        return exoPlayer.getPlaybackState() == Player.STATE_IDLE;
+        return exo().getPlaybackState() == Player.STATE_IDLE;
     }
 
     public boolean canNext() {
         return getCurrentPosition() >= getDuration();
     }
 
-    public void setMediaSource(Result result, boolean useParse) {
+    public void start(Result result, boolean useParse) {
         if (result.getUrl().isEmpty()) {
             PlayerEvent.error(R.string.error_play_load);
         } else if (result.getParse(1) == 1 || result.getJx() == 1) {
             if (parseTask != null) parseTask.cancel();
             parseTask = ParseTask.create(this).run(result, useParse);
         } else {
-            setMediaSource(result.getHeaders(), result.getPlayUrl() + result.getUrl());
+            setMediaSource(result);
         }
     }
 
-    public void setMediaSource(Map<String, String> headers, String url) {
-        exoPlayer.setMediaSource(ExoUtil.getSource(headers, url));
+    private void setMediaSource(Result result) {
+        exo().setMediaSource(ExoUtil.getSource(result));
         PlayerEvent.state(0);
-        exoPlayer.prepare();
-        exoPlayer.play();
+        exo().prepare();
+    }
+
+    private void setMediaSource(Map<String, String> headers, String url) {
+        exo().setMediaSource(ExoUtil.getSource(headers, url));
+        PlayerEvent.state(0);
+        exo().prepare();
     }
 
     public void pause() {
-        if (exoPlayer != null) {
-            exoPlayer.pause();
-        }
+        exo().pause();
     }
 
     public void stop() {
         this.retry = 0;
-        if (exoPlayer != null) {
-            exoPlayer.stop();
-            exoPlayer.clearMediaItems();
-            exoPlayer.setPlaybackSpeed(1.0f);
-        }
-        if (webView != null) {
-            webView.stop(false);
-        }
+        exo().stop();
+        exo().clearMediaItems();
+        exo().setPlaybackSpeed(1.0f);
+        if (webView != null) webView.stop(false);
     }
 
     public void play() {
-        if (exoPlayer != null) {
-            exoPlayer.play();
-        }
+        exo().play();
     }
 
     public void release() {

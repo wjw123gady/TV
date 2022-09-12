@@ -1,9 +1,7 @@
 package com.fongmi.android.tv.api;
 
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.TextUtils;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Live;
@@ -24,6 +22,7 @@ import org.json.JSONObject;
 
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,6 +51,10 @@ public class ApiConfig {
 
     public static String getHomeName() {
         return get().getHome().getName();
+    }
+
+    public static int getHomeIndex() {
+        return get().getSites().indexOf(get().getHome());
     }
 
     public static String getSiteName(String key) {
@@ -134,7 +137,7 @@ public class ApiConfig {
     private String parseExt(String ext) {
         if (ext.startsWith("http")) return ext;
         else if (ext.startsWith("file")) return FileUtil.read(ext);
-        else if (ext.endsWith(".json")) return parseExt(convert(ext));
+        else if (ext.endsWith(".json")) return parseExt(FileUtil.convert(ext));
         return ext;
     }
 
@@ -145,27 +148,16 @@ public class ApiConfig {
         if (md5.length() > 0 && FileUtil.equals(md5)) {
             loader.load(FileUtil.getJar());
         } else if (url.startsWith("http")) {
-            FileUtil.write(FileUtil.getJar(), OKHttp.newCall(url).execute().body().bytes());
-            loader.load(FileUtil.getJar());
+            loader.load(FileUtil.write(FileUtil.getJar(), OKHttp.newCall(url).execute().body().bytes()));
         } else if (url.startsWith("file")) {
             loader.load(FileUtil.getLocal(url));
         } else if (!url.isEmpty()) {
-            parseJar(convert(url));
+            parseJar(FileUtil.convert(url));
         }
     }
 
-    private String convert(String text) {
-        if (TextUtils.isEmpty(text)) return "";
-        if (text.startsWith("clan")) return text.replace("clan", "file");
-        if (text.startsWith(".")) text = text.substring(1);
-        if (text.startsWith("/")) text = text.substring(1);
-        Uri uri = Uri.parse(Prefers.getUrl());
-        if (uri.getLastPathSegment() == null) return uri.getScheme() + "://" + text;
-        return uri.toString().replace(uri.getLastPathSegment(), text);
-    }
-
     public Spider getCSP(Site site) {
-        return loader.getSpider(site.getKey(), site.getApi(), site.getExt());
+        return loader.getSpider(site.getKey(), site.getApi(), site.getExt(), site.getJar());
     }
 
     public Object[] proxyLocal(Map<?, ?> param) {
@@ -191,19 +183,19 @@ public class ApiConfig {
     }
 
     public List<Site> getSites() {
-        return sites;
+        return sites == null ? Collections.emptyList() : sites;
     }
 
     public List<Parse> getParses() {
-        return parses;
+        return parses == null ? Collections.emptyList() : parses;
     }
 
     public String getAds() {
-        return ads.toString();
+        return ads == null ? "" : ads.toString();
     }
 
     public List<String> getFlags() {
-        return flags;
+        return flags == null ? Collections.emptyList() : flags;
     }
 
     public Site getHome() {

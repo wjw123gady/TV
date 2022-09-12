@@ -1,9 +1,9 @@
 package com.fongmi.android.tv.ui.activity;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -21,6 +21,7 @@ import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.bean.Func;
 import com.fongmi.android.tv.bean.History;
 import com.fongmi.android.tv.bean.Result;
+import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.ActivityHomeBinding;
 import com.fongmi.android.tv.event.RefreshEvent;
@@ -30,10 +31,12 @@ import com.fongmi.android.tv.player.Players;
 import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
 import com.fongmi.android.tv.ui.custom.CustomSelector;
+import com.fongmi.android.tv.ui.custom.CustomTitleView;
+import com.fongmi.android.tv.ui.custom.dialog.SiteDialog;
 import com.fongmi.android.tv.ui.presenter.FuncPresenter;
+import com.fongmi.android.tv.ui.presenter.HeaderPresenter;
 import com.fongmi.android.tv.ui.presenter.HistoryPresenter;
 import com.fongmi.android.tv.ui.presenter.ProgressPresenter;
-import com.fongmi.android.tv.ui.presenter.TitlePresenter;
 import com.fongmi.android.tv.ui.presenter.VodPresenter;
 import com.fongmi.android.tv.utils.Clock;
 import com.fongmi.android.tv.utils.Notify;
@@ -45,23 +48,22 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class HomeActivity extends BaseActivity implements VodPresenter.OnClickListener, FuncPresenter.OnClickListener, HistoryPresenter.OnClickListener {
+public class HomeActivity extends BaseActivity implements CustomTitleView.Listener, VodPresenter.OnClickListener, FuncPresenter.OnClickListener, HistoryPresenter.OnClickListener {
 
     private ActivityHomeBinding mBinding;
     private ArrayObjectAdapter mAdapter;
     private ArrayObjectAdapter mHistoryAdapter;
     private HistoryPresenter mHistoryPresenter;
     private FuncPresenter mFuncPresenter;
-    private SiteViewModel mSiteViewModel;
+    private SiteViewModel mViewModel;
     private boolean mConfirmExit;
+    private Handler mHandler;
 
     public static void start(Activity activity) {
         activity.startActivity(new Intent(activity, HomeActivity.class));
         activity.finish();
-        Updater.check();
     }
 
     @Override
@@ -71,6 +73,8 @@ public class HomeActivity extends BaseActivity implements VodPresenter.OnClickLi
 
     @Override
     protected void initView() {
+        mHandler = new Handler(Looper.getMainLooper());
+        Updater.create(this).start();
         Clock.start(mBinding.time);
         Server.get().start();
         Players.get().init();
@@ -79,24 +83,26 @@ public class HomeActivity extends BaseActivity implements VodPresenter.OnClickLi
         setAdapter();
         getHistory();
         getVideo();
+        setFocus();
     }
 
     @Override
     protected void initEvent() {
         EventBus.getDefault().register(this);
+        mBinding.title.setListener(this);
         mFuncPresenter.setOnClickListener(this);
         mHistoryPresenter.setOnClickListener(this);
         mBinding.recycler.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
-                mBinding.time.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
+                mBinding.toolbar.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
             }
         });
     }
 
     private void setRecyclerView() {
         CustomSelector selector = new CustomSelector();
-        selector.addPresenter(Integer.class, new TitlePresenter());
+        selector.addPresenter(Integer.class, new HeaderPresenter());
         selector.addPresenter(String.class, new ProgressPresenter());
         selector.addPresenter(ListRow.class, new CustomRowPresenter(16), VodPresenter.class);
         selector.addPresenter(ListRow.class, new CustomRowPresenter(16), FuncPresenter.class);
@@ -107,35 +113,40 @@ public class HomeActivity extends BaseActivity implements VodPresenter.OnClickLi
     }
 
     private void setViewModel() {
-        mSiteViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
-        mSiteViewModel.result.observe(this, result -> {
+        mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
+        mViewModel.result.observe(this, result -> {
             mAdapter.remove("progress");
-            if (result != null) addVideo(result);
+            addVideo(result);
         });
     }
 
     private void setAdapter() {
-        mAdapter.add(R.string.app_name);
         mAdapter.add(getFuncRow());
         mAdapter.add(R.string.home_history);
         mAdapter.add(R.string.home_recommend);
     }
 
+    private void setFocus() {
+        mBinding.recycler.requestFocus();
+        mHandler.postDelayed(() -> mBinding.title.setFocusable(true), 500);
+    }
+
     private void getVideo() {
+        mViewModel.getResult().setValue(Result.empty());
         if (mAdapter.size() > getRecommendIndex()) mAdapter.removeItems(getRecommendIndex(), mAdapter.size() - getRecommendIndex());
+        if (ApiConfig.get().getHome().getName().isEmpty()) mBinding.title.setText(R.string.app_name);
+        else mBinding.title.setText(ApiConfig.getHomeName());
         if (ApiConfig.get().getHome().getKey().isEmpty()) return;
-        mSiteViewModel.homeContent();
+        mViewModel.homeContent();
         mAdapter.add("progress");
     }
 
     private void addVideo(Result result) {
-        List<ListRow> rows = new ArrayList<>();
         for (List<Vod> items : Lists.partition(result.getList(), 5)) {
             ArrayObjectAdapter adapter = new ArrayObjectAdapter(new VodPresenter(this));
             adapter.setItems(items, null);
-            rows.add(new ListRow(adapter));
+            mAdapter.add(new ListRow(adapter));
         }
-        mAdapter.addAll(mAdapter.size(), rows);
     }
 
     private ListRow getFuncRow() {
@@ -172,7 +183,7 @@ public class HomeActivity extends BaseActivity implements VodPresenter.OnClickLi
     public void onItemClick(Func item) {
         switch (item.getResId()) {
             case R.string.home_vod:
-                VodActivity.start(this, mSiteViewModel.getResult().getValue());
+                VodActivity.start(this, mViewModel.getResult().getValue());
                 break;
             case R.string.home_search:
                 SearchActivity.start(this);
@@ -188,7 +199,14 @@ public class HomeActivity extends BaseActivity implements VodPresenter.OnClickLi
 
     @Override
     public void onItemClick(Vod item) {
-        DetailActivity.start(this, item.getVodId());
+        if (item.getVodId().startsWith("msearch:")) onLongClick(item);
+        else DetailActivity.start(this, item.getVodId());
+    }
+
+    @Override
+    public boolean onLongClick(Vod item) {
+        CollectActivity.start(this, item.getVodName());
+        return true;
     }
 
     @Override
@@ -204,12 +222,22 @@ public class HomeActivity extends BaseActivity implements VodPresenter.OnClickLi
         mHistoryPresenter.setDelete(false);
     }
 
-    @SuppressLint("RestrictedApi")
     @Override
     public boolean onLongClick() {
         mHistoryPresenter.setDelete(true);
         mHistoryAdapter.notifyArrayItemRangeChanged(0, mHistoryAdapter.size());
         return true;
+    }
+
+    @Override
+    public void showDialog() {
+        SiteDialog.show(this);
+    }
+
+    @Override
+    public void setSite(Site item) {
+        ApiConfig.get().setHome(item);
+        getVideo();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -227,7 +255,7 @@ public class HomeActivity extends BaseActivity implements VodPresenter.OnClickLi
     public void onServerEvent(ServerEvent event) {
         switch (event.getType()) {
             case SEARCH:
-                SearchActivity.start(this, event.getText());
+                CollectActivity.start(this, event.getText());
                 break;
             case PUSH:
                 if (ApiConfig.get().getSite("push_agent") == null) return;
@@ -241,20 +269,19 @@ public class HomeActivity extends BaseActivity implements VodPresenter.OnClickLi
         if (mHistoryPresenter.isDelete()) {
             mHistoryPresenter.setDelete(false);
             mHistoryAdapter.notifyArrayItemRangeChanged(0, mHistoryAdapter.size());
-        } else if (mBinding.recycler.getSelectedPosition() != 1) {
-            mBinding.recycler.smoothScrollToPosition(1);
+        } else if (mBinding.recycler.getSelectedPosition() != 0) {
+            mBinding.recycler.scrollToPosition(0);
         } else if (!mConfirmExit) {
             mConfirmExit = true;
             Notify.show(R.string.app_exit);
-            new Handler().postDelayed(() -> mConfirmExit = false, 1000);
+            mHandler.postDelayed(() -> mConfirmExit = false, 1000);
         } else {
+            destroy();
             super.onBackPressed();
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    private void destroy() {
         Server.get().stop();
         Clock.get().release();
         Players.get().release();

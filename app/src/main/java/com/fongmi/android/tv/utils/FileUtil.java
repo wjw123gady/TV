@@ -43,6 +43,10 @@ public class FileUtil {
         return getCacheFile("spider.jar");
     }
 
+    public static File getJar(String fileName) {
+        return getCacheFile(fileName.concat(".jar"));
+    }
+
     public static File getLocal(String path) {
         return new File(path.replace("file:/", getRootPath()));
     }
@@ -61,6 +65,7 @@ public class FileUtil {
         fos.write(data);
         fos.flush();
         fos.close();
+        chmod(file);
         return file;
     }
 
@@ -75,6 +80,16 @@ public class FileUtil {
         } catch (Exception e) {
             return "";
         }
+    }
+
+    public static String convert(String text) {
+        if (TextUtils.isEmpty(text)) return "";
+        if (text.startsWith("clan")) return text.replace("clan", "file");
+        if (text.startsWith(".")) text = text.substring(1);
+        if (text.startsWith("/")) text = text.substring(1);
+        Uri uri = Uri.parse(Prefers.getUrl());
+        if (uri.getLastPathSegment() == null) return uri.getScheme() + "://" + text;
+        return uri.toString().replace(uri.getLastPathSegment(), text);
     }
 
     private static String getMd5(File file) {
@@ -110,5 +125,14 @@ public class FileUtil {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.setDataAndType(getShareUri(file), FileUtil.getMimeType(file.getName()));
         App.get().startActivity(intent);
+    }
+
+    private static void chmod(File file) {
+        try {
+            Process process = Runtime.getRuntime().exec("chmod 777 " + file);
+            process.waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

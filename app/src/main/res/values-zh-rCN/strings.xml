@@ -11,6 +11,7 @@
     <string name="vod_last">上次看到<xliff:g name="name">%s</xliff:g></string>
 
     <!-- Detail -->
+    <string name="detail_title"><xliff:g name="name">%s</xliff:g>：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_site">站源：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_year">年份：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_area">地区：<xliff:g name="name">%s</xliff:g></string>
@@ -18,7 +19,6 @@
     <string name="detail_director">导演：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_actor">演员：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_content">简介：<xliff:g name="name">%s</xliff:g></string>
-    <string name="detail_reverse">倒序</string>
 
     <!-- Play -->
     <string name="play">播放</string>
@@ -27,7 +27,13 @@
     <string name="play_ready">准备播放：<xliff:g name="name">%s</xliff:g></string>
     <string name="play_replay">重播</string>
     <string name="play_reset">重置</string>
+    <string name="play_tracks">轨道</string>
     <string name="play_oped">片头片尾</string>
+    <string name="play_reverse">倒序</string>
+    <string name="play_forward">→</string>
+    <string name="play_backward">←</string>
+    <string name="play_forward_hint">已切换正序播放</string>
+    <string name="play_backward_hint">已切换倒序播放</string>
 
     <!-- Parse -->
     <string name="parse">解析</string>
@@ -36,7 +42,9 @@
     <!-- Setting -->
     <string name="setting_site">首页</string>
     <string name="setting_url">配置</string>
+    <string name="setting_render">渲染</string>
     <string name="setting_thumbnail">缩图</string>
+    <string name="setting_version">版本</string>
 
     <!-- Dialog -->
     <string name="dialog_positive">确定</string>
@@ -53,6 +61,10 @@
     <string name="error_play_format">不支援的影片格式</string>
     <string name="error_episode">暂无播放数据</string>
     <string name="error_empty">找不到数据</string>
+
+    <!-- Update -->
+    <string name="update_version">发现新版本 <xliff:g name="name">%s</xliff:g></string>
+    <string name="update_confirm">更新</string>
 
     <!-- Crash -->
     <string name="crash_info">发生意外错误\n抱歉给您带来不便</string>
