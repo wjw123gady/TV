@@ -15,7 +15,7 @@ import com.google.gson.annotations.SerializedName;
 import java.util.Collections;
 import java.util.List;
 
-@Entity(ignoredColumns = {"type", "api", "playUrl", "ext", "categories", "jar"})
+@Entity(ignoredColumns = {"type", "api", "playUrl", "ext", "jar", "categories"})
 public class Site {
 
     @NonNull
@@ -44,7 +44,11 @@ public class Site {
     private boolean activated;
 
     public static Site objectFrom(JsonElement element) {
-        return new Gson().fromJson(element, Site.class);
+        try {
+            return new Gson().fromJson(element, Site.class);
+        } catch (Exception e) {
+            return new Site();
+        }
     }
 
     public static Site get(String key) {

@@ -6,12 +6,13 @@ import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.event.PlayerEvent;
-import com.fongmi.android.tv.ui.custom.CustomWebView;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.util.Util;
 
 import java.util.Formatter;
@@ -20,44 +21,29 @@ import java.util.Map;
 
 public class Players implements Player.Listener, ParseTask.Callback {
 
-    private CustomWebView webView;
     private StringBuilder builder;
     private Formatter formatter;
     private ExoPlayer exoPlayer;
     private ParseTask parseTask;
-    private String key;
     private int retry;
 
-    private static class Loader {
-        static volatile Players INSTANCE = new Players();
-    }
-
-    public static Players get() {
-        return Loader.INSTANCE;
-    }
-
-    public void init() {
+    public Players init() {
         builder = new StringBuilder();
-        webView = new CustomWebView(App.get());
         formatter = new Formatter(builder, Locale.getDefault());
-        exoPlayer = ExoUtil.create();
+        setupPlayer();
+        return this;
+    }
+
+    private void setupPlayer() {
+        DefaultTrackSelector selector = new DefaultTrackSelector(App.get());
+        selector.setParameters(selector.getParameters().buildUpon().setPreferredTextLanguage("zh").build());
+        DefaultRenderersFactory factory = new DefaultRenderersFactory(App.get()).setEnableDecoderFallback(true).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON);
+        exoPlayer = new ExoPlayer.Builder(App.get()).setRenderersFactory(factory).setTrackSelector(selector).build();
         exoPlayer.addListener(this);
     }
 
     public ExoPlayer exo() {
         return exoPlayer;
-    }
-
-    public CustomWebView web() {
-        return webView;
-    }
-
-    public String getKey() {
-        return key;
-    }
-
-    public void setKey(String key) {
-        this.key = key;
     }
 
     public int getRetry() {
@@ -74,18 +60,18 @@ public class Players implements Player.Listener, ParseTask.Callback {
     }
 
     public String getSpeed() {
-        return String.format(Locale.getDefault(), "%.2f", exo().getPlaybackParameters().speed);
+        return String.format(Locale.getDefault(), "%.2f", exoPlayer.getPlaybackParameters().speed);
     }
 
     public void addSpeed() {
-        float speed = exo().getPlaybackParameters().speed;
+        float speed = exoPlayer.getPlaybackParameters().speed;
         float addon = speed >= 2 ? 1f : 0.25f;
-        speed = speed >= 5 ? 0.5f : speed + addon;
-        exo().setPlaybackSpeed(speed);
+        speed = speed == 5 ? 0.25f : speed + addon;
+        exoPlayer.setPlaybackSpeed(speed);
     }
 
     public void resetSpeed() {
-        exo().setPlaybackSpeed(1f);
+        exoPlayer.setPlaybackSpeed(1f);
     }
 
     public String getTime(long time) {
@@ -100,82 +86,81 @@ public class Players implements Player.Listener, ParseTask.Callback {
     }
 
     public long getCurrentPosition() {
-        return exo().getCurrentPosition();
+        return exoPlayer == null ? 0 : exoPlayer.getCurrentPosition();
     }
 
     public long getDuration() {
-        return exo().getDuration();
+        return exoPlayer == null ? 0 : exoPlayer.getDuration();
     }
 
     public void seekTo(int time) {
-        exo().seekTo(getCurrentPosition() + time);
+        exoPlayer.seekTo(getCurrentPosition() + time);
     }
 
     public void seekTo(long time) {
-        exo().seekTo(time);
+        exoPlayer.seekTo(time);
     }
 
     public boolean isPlaying() {
-        return exo().isPlaying();
+        return exoPlayer != null && exoPlayer.isPlaying();
     }
 
     public boolean isIdle() {
-        return exo().getPlaybackState() == Player.STATE_IDLE;
+        return exoPlayer != null && exoPlayer.getPlaybackState() == Player.STATE_IDLE;
     }
 
     public boolean canNext() {
         return getCurrentPosition() >= getDuration();
     }
 
+    public void play() {
+        exoPlayer.play();
+    }
+
+    public void pause() {
+        exoPlayer.pause();
+    }
+
+    public void stop() {
+        retry = 0;
+        exoPlayer.stop();
+        exoPlayer.clearMediaItems();
+    }
+
+    public void release() {
+        stopParse();
+        exoPlayer.stop();
+        exoPlayer.clearMediaItems();
+        exoPlayer.removeListener(this);
+        exoPlayer.release();
+        exoPlayer = null;
+    }
+
     public void start(Result result, boolean useParse) {
         if (result.getUrl().isEmpty()) {
             PlayerEvent.error(R.string.error_play_load);
         } else if (result.getParse(1) == 1 || result.getJx() == 1) {
-            if (parseTask != null) parseTask.cancel();
+            stopParse();
             parseTask = ParseTask.create(this).run(result, useParse);
         } else {
             setMediaSource(result);
         }
     }
 
+    private void stopParse() {
+        if (parseTask != null) parseTask.cancel();
+    }
+
     private void setMediaSource(Result result) {
-        exo().setMediaSource(ExoUtil.getSource(result));
+        exoPlayer.setMediaSource(ExoUtil.getSource(result));
         PlayerEvent.state(0);
-        exo().prepare();
+        exoPlayer.prepare();
     }
 
     private void setMediaSource(Map<String, String> headers, String url) {
-        exo().setMediaSource(ExoUtil.getSource(headers, url));
+        exoPlayer.setMediaSource(ExoUtil.getSource(headers, url));
         PlayerEvent.state(0);
-        exo().prepare();
-    }
-
-    public void pause() {
-        exo().pause();
-    }
-
-    public void stop() {
-        this.retry = 0;
-        exo().stop();
-        exo().clearMediaItems();
-        exo().setPlaybackSpeed(1.0f);
-        if (webView != null) webView.stop(false);
-    }
-
-    public void play() {
-        exo().play();
-    }
-
-    public void release() {
-        if (exoPlayer != null) {
-            exoPlayer.removeListener(this);
-            exoPlayer.release();
-            exoPlayer = null;
-        }
-        if (webView != null) {
-            webView.destroy();
-            webView = null;
-        }
+        exoPlayer.prepare();
     }
 
     @Override

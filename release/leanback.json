@@ -1,7 +1,6 @@
 {
-  "version": 23,
-  "code": 23,
-  "name": "1.2.3",
+  "code": 32,
+  "name": "1.3.2",
   "url": "https://github.com/FongMi/TV/blob/main/release/leanback.apk?raw=true",
-  "desc": "1. 修正搜尋介面焦點\n2. 修正切換縮放問題"
+  "desc": "1. 支援 Alist 篩選\n2. 優化字幕名稱顯示"
 }
