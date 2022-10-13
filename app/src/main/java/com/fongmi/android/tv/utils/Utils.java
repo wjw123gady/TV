@@ -2,7 +2,9 @@ package com.fongmi.android.tv.utils;
 
 import android.app.Activity;
 import android.content.Context;
+import android.net.Uri;
 import android.os.IBinder;
+import android.text.TextUtils;
 import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.View;
@@ -10,14 +12,15 @@ import android.view.inputmethod.InputMethodManager;
 
 import com.fongmi.android.tv.App;
 
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.regex.Pattern;
 
 public class Utils {
-
-    private static final Pattern SNIFFER = Pattern.compile("http((?!http).){20,}?\\.(m3u8|mp4|flv|avi|mkv|rm|wmv|mpg)\\?.*|http((?!http).){20,}\\.(m3u8|mp4|flv|avi|mkv|rm|wmv|mpg)|http((?!http).){20,}?\\/m3u8\\?pt=m3u8.*|http((?!http).)*?default\\.ixigua\\.com\\/.*|http((?!http).)*?cdn-tos[^\\?]*|http((?!http).)*?\\/obj\\/tos[^\\?]*|http.*?\\/player\\/m3u8play\\.php\\?url=.*|http.*?\\/player\\/.*?[pP]lay\\.php\\?url=.*|http.*?\\/playlist\\/m3u8\\/\\?vid=.*|http.*?\\.php\\?type=m3u8&.*|http.*?\\/download.aspx\\?.*|http.*?\\/api\\/up_api.php\\?.*|https.*?\\.66yk\\.cn.*|http((?!http).)*?netease\\.com\\/file\\/.*");
 
     public static boolean isEnterKey(KeyEvent event) {
         return event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || event.getKeyCode() == KeyEvent.KEYCODE_ENTER || event.getKeyCode() == KeyEvent.KEYCODE_SPACE || event.getKeyCode() == KeyEvent.KEYCODE_NUMPAD_ENTER;
@@ -53,20 +56,67 @@ public class Utils {
     }
 
     public static boolean isVideoFormat(String url, Map<String, String> headers) {
-        if (headers.containsKey("Range")) return true;
-        if (headers.containsKey("Accept") && Objects.requireNonNull(headers.get("Accept")).contains("image")) return false;
-        return SNIFFER.matcher(url).find();
+        if (headers.containsKey("Accept") && headers.get("Accept").contains("image")) return false;
+        if (url.contains(".js") || url.contains(".css")) return false;
+        return Sniffer.RULE.matcher(url).find();
+    }
+
+    public static boolean isVip(String url) {
+        List<String> hosts = Arrays.asList("iqiyi.com", "v.qq.com", "youku.com", "le.com", "tudou.com", "mgtv.com", "sohu.com", "acfun.cn", "bilibili.com", "baofeng.com", "pptv.com");
+        for (String host : hosts) if (url.contains(host)) return true;
+        return false;
+    }
+
+    public static String checkClan(String text) {
+        if (text.contains("/localhost/")) text = text.replace("/localhost/", "/");
+        if (text.startsWith("clan")) text = text.replace("clan", "file");
+        return text;
+    }
+
+    public static String convert(String text) {
+        if (TextUtils.isEmpty(text)) return "";
+        if (text.startsWith("clan")) return checkClan(text);
+        if (text.startsWith(".")) text = text.substring(1);
+        if (text.startsWith("/")) text = text.substring(1);
+        Uri uri = Uri.parse(Prefers.getUrl());
+        if (uri.getLastPathSegment() == null) return uri.getScheme() + "://" + text;
+        return uri.toString().replace(uri.getLastPathSegment(), text);
+    }
+
+    public static String getMD5(String src) {
+        try {
+            if (TextUtils.isEmpty(src)) return "";
+            MessageDigest digest = MessageDigest.getInstance("MD5");
+            byte[] bytes = digest.digest(src.getBytes());
+            BigInteger no = new BigInteger(1, bytes);
+            StringBuilder sb = new StringBuilder(no.toString(16));
+            while (sb.length() < 32) sb.insert(0, "0");
+            return sb.toString().toLowerCase();
+        } catch (NoSuchAlgorithmException e) {
+            return "";
+        }
     }
 
     public static String getBase64(String ext) {
         return Base64.encodeToString(ext.getBytes(), Base64.DEFAULT | Base64.NO_WRAP);
     }
 
+    public static String substring(String text) {
+        return substring(text, 1);
+    }
+
+    public static String substring(String text, int num) {
+        if (text != null && text.length() > num) return text.substring(0, text.length() - num);
+        return text;
+    }
+
     public static int getDigit(String text) {
         try {
+            if (text.startsWith("上") || text.startsWith("下")) return -1;
+            if (text.contains(".")) text = text.substring(0, text.lastIndexOf("."));
             return Integer.parseInt(text.replaceAll("\\D+", ""));
         } catch (Exception e) {
-            return 0;
+            return -1;
         }
     }
 

@@ -10,20 +10,19 @@ import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.net.Callback;
-import com.fongmi.android.tv.net.OKHttp;
 import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.Json;
 import com.fongmi.android.tv.utils.Prefers;
+import com.fongmi.android.tv.utils.Utils;
 import com.github.catvod.crawler.Spider;
+import com.github.catvod.crawler.SpiderNull;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonReader;
 
 import org.json.JSONObject;
 
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,7 +37,8 @@ public class ApiConfig {
     private List<Parse> parses;
     private List<Live> lives;
     private List<Site> sites;
-    private JarLoader loader;
+    private JarLoader jLoader;
+    private PyLoader pLoader;
     private Handler handler;
     private Parse parse;
     private Site home;
@@ -74,7 +74,8 @@ public class ApiConfig {
         this.lives = new ArrayList<>();
         this.flags = new ArrayList<>();
         this.parses = new ArrayList<>();
-        this.loader = new JarLoader();
+        this.jLoader = new JarLoader();
+        this.pLoader = new PyLoader();
         this.handler = new Handler(Looper.getMainLooper());
         return this;
     }
@@ -85,33 +86,22 @@ public class ApiConfig {
 
     public void loadConfig(boolean cache, Callback callback) {
         new Thread(() -> {
-            String url = Prefers.getUrl();
-            if (cache) getCacheConfig(url, callback);
-            else if (url.startsWith("http")) getWebConfig(url, callback);
-            else if (url.startsWith("file")) getFileConfig(url, callback);
-            else handler.post(() -> callback.error(0));
+            if (cache) loadCache(Prefers.getUrl(), callback);
+            else loadConfig(Prefers.getUrl(), callback);
         }).start();
     }
 
-    private void getFileConfig(String url, Callback callback) {
+    private void loadConfig(String url, Callback callback) {
         try {
-            parseConfig(new Gson().fromJson(new JsonReader(new FileReader(FileUtil.getLocal(url))), JsonObject.class), callback);
+            parseConfig(new Gson().fromJson(Decoder.getJson(url), JsonObject.class), callback);
         } catch (Exception e) {
+            if (url.isEmpty()) handler.post(() -> callback.error(0));
+            else loadCache(url, callback);
             e.printStackTrace();
-            getCacheConfig(url, callback);
         }
     }
 
-    private void getWebConfig(String url, Callback callback) {
-        try {
-            parseConfig(new Gson().fromJson(OKHttp.newCall(url).execute().body().string(), JsonObject.class), callback);
-        } catch (Exception e) {
-            e.printStackTrace();
-            getCacheConfig(url, callback);
-        }
-    }
-
-    private void getCacheConfig(String url, Callback callback) {
+    private void loadCache(String url, Callback callback) {
         String json = Config.find(url).getJson();
         if (!TextUtils.isEmpty(json)) parseConfig(JsonParser.parseString(json).getAsJsonObject(), callback);
         else handler.post(() -> callback.error(R.string.error_config_get));
@@ -120,7 +110,7 @@ public class ApiConfig {
     private void parseConfig(JsonObject object, Callback callback) {
         try {
             parseJson(object);
-            loader.parseJar("", Json.safeString(object, "spider", ""));
+            jLoader.parseJar("", Json.safeString(object, "spider", ""));
             handler.post(() -> callback.success(object.toString()));
         } catch (Exception e) {
             e.printStackTrace();
@@ -149,24 +139,29 @@ public class ApiConfig {
     private String parseExt(String ext) {
         if (ext.startsWith("http")) return ext;
         else if (ext.startsWith("file")) return FileUtil.read(ext);
-        else if (ext.endsWith(".json")) return parseExt(FileUtil.convert(ext));
+        else if (ext.startsWith("img+")) return Decoder.getExt(ext);
+        else if (ext.endsWith(".json")) return parseExt(Utils.convert(ext));
         return ext;
     }
 
     public Spider getCSP(Site site) {
-        return loader.getSpider(site.getKey(), site.getApi(), site.getExt(), site.getJar());
+        boolean py = site.getApi().startsWith("py_");
+        boolean csp = site.getApi().startsWith("csp_");
+        if (py) return pLoader.getSpider(site.getKey(), site.getApi(), site.getExt());
+        else if (csp) return jLoader.getSpider(site.getKey(), site.getApi(), site.getExt(), site.getJar());
+        else return new SpiderNull();
     }
 
     public Object[] proxyLocal(Map<?, ?> param) {
-        return loader.proxyInvoke(param);
+        return jLoader.proxyInvoke(param);
     }
 
     public JSONObject jsonExt(String key, LinkedHashMap<String, String> jxs, String url) {
-        return loader.jsonExt(key, jxs, url);
+        return jLoader.jsonExt(key, jxs, url);
     }
 
     public JSONObject jsonExtMix(String flag, String key, String name, LinkedHashMap<String, HashMap<String, String>> jxs, String url) {
-        return loader.jsonExtMix(flag, key, name, jxs, url);
+        return jLoader.jsonExtMix(flag, key, name, jxs, url);
     }
 
     public Site getSite(String key) {
@@ -227,7 +222,8 @@ public class ApiConfig {
         this.lives.clear();
         this.flags.clear();
         this.parses.clear();
-        this.loader.clear();
+        this.jLoader.clear();
+        this.pLoader.clear();
         this.home = null;
         return this;
     }
