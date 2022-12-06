@@ -30,11 +30,13 @@ public class SiteViewModel extends ViewModel {
 
     public MutableLiveData<Result> result;
     public MutableLiveData<Result> player;
+    public MutableLiveData<Result> search;
     public ExecutorService executor;
 
     public SiteViewModel() {
         this.result = new MutableLiveData<>();
         this.player = new MutableLiveData<>();
+        this.search = new MutableLiveData<>();
     }
 
     public MutableLiveData<Result> getResult() {
@@ -82,8 +84,8 @@ public class SiteViewModel extends ViewModel {
         });
     }
 
-    public void categoryContent(String tid, String page, boolean filter, HashMap<String, String> extend) {
-        Site site = ApiConfig.get().getHome();
+    public void categoryContent(String key, String tid, String page, boolean filter, HashMap<String, String> extend) {
+        Site site = ApiConfig.get().getSite(key);
         execute(result, () -> {
             if (site.getType() == 3) {
                 Spider spider = ApiConfig.get().getCSP(site);
@@ -92,7 +94,7 @@ public class SiteViewModel extends ViewModel {
                 return Result.fromJson(categoryContent);
             } else {
                 ArrayMap<String, String> params = new ArrayMap<>();
-                if (site.getType() == 1) params.put("f", new Gson().toJson(extend));
+                if (site.getType() == 1 && !extend.isEmpty()) params.put("f", new Gson().toJson(extend));
                 else if (site.getType() == 4) params.put("ext", Utils.getBase64(new Gson().toJson(extend)));
                 params.put("ac", site.getType() == 0 ? "videolist" : "detail");
                 params.put("t", tid);
@@ -159,31 +161,27 @@ public class SiteViewModel extends ViewModel {
         });
     }
 
-    public void searchContent(Site site, String keyword) {
-        try {
-            if (site.getType() == 3) {
-                Spider spider = ApiConfig.get().getCSP(site);
-                String searchContent = spider.searchContent(keyword, false);
-                SpiderDebug.log(searchContent);
-                post(site, Result.fromJson(searchContent));
-            } else {
-                ArrayMap<String, String> params = new ArrayMap<>();
-                params.put("wd", keyword);
-                if (site.getType() != 0) params.put("ac", "detail");
-                String body = OKHttp.newCall(site.getApi(), params).execute().body().string();
-                SpiderDebug.log(site.getName() + "," + body);
-                if (site.getType() == 0) post(site, Result.fromXml(body));
-                else post(site, Result.fromJson(body));
-            }
-        } catch (Throwable e) {
-            e.printStackTrace();
+    public void searchContent(Site site, String keyword) throws Throwable {
+        if (site.getType() == 3) {
+            Spider spider = ApiConfig.get().getCSP(site);
+            String searchContent = spider.searchContent(keyword, false);
+            SpiderDebug.log(searchContent);
+            post(site, Result.fromJson(searchContent));
+        } else {
+            ArrayMap<String, String> params = new ArrayMap<>();
+            params.put("wd", keyword);
+            if (site.getType() != 0) params.put("ac", "detail");
+            String body = OKHttp.newCall(site.getApi(), params).execute().body().string();
+            SpiderDebug.log(site.getName() + "," + body);
+            if (site.getType() == 0) post(site, Result.fromXml(body));
+            else post(site, Result.fromJson(body));
         }
     }
 
     private void post(Site site, Result result) {
         if (result.getList().isEmpty()) return;
         for (Vod vod : result.getList()) vod.setSite(site);
-        this.result.postValue(result);
+        this.search.postValue(result);
     }
 
     private void execute(MutableLiveData<Result> result, Callable<Result> callable) {
@@ -191,7 +189,7 @@ public class SiteViewModel extends ViewModel {
         executor = Executors.newFixedThreadPool(2);
         executor.execute(() -> {
             try {
-                if (!Thread.interrupted()) result.postValue(executor.submit(callable).get(15, TimeUnit.SECONDS));
+                if (!Thread.interrupted()) result.postValue(executor.submit(callable).get(30, TimeUnit.SECONDS));
             } catch (Throwable e) {
                 e.printStackTrace();
                 if (e instanceof InterruptedException) return;

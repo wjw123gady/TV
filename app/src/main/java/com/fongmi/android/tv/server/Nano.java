@@ -33,7 +33,6 @@ public class Nano extends NanoHTTPD {
         processes.add(new RawRequestProcess("/index.html", R.raw.index, NanoHTTPD.MIME_HTML));
         processes.add(new RawRequestProcess("/ui.css", R.raw.ui, "text/css"));
         processes.add(new RawRequestProcess("/style.css", R.raw.style, "text/css"));
-        processes.add(new RawRequestProcess("/jquery.js", R.raw.jquery, "application/x-javascript"));
         processes.add(new RawRequestProcess("/script.js", R.raw.script, "application/x-javascript"));
         processes.add(new RawRequestProcess("/favicon.ico", R.mipmap.ic_launcher, "image/x-icon"));
     }
@@ -96,8 +95,10 @@ public class Nano extends NanoHTTPD {
 
         void onSearch(String text);
 
-        void onPush(String url);
+        void onUpdate(String text);
 
-        void onApi(String url);
+        void onPush(String text);
+
+        void onApi(String text);
     }
 }

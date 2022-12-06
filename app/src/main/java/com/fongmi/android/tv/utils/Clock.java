@@ -1,8 +1,8 @@
 package com.fongmi.android.tv.utils;
 
-import android.os.Handler;
-import android.os.Looper;
 import android.widget.TextView;
+
+import com.fongmi.android.tv.App;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -14,7 +14,6 @@ public class Clock {
 
     private SimpleDateFormat formatter;
     private Callback callback;
-    private Handler handler;
     private Timer timer;
     private Date date;
 
@@ -26,14 +25,17 @@ public class Clock {
         return Loader.INSTANCE;
     }
 
-    public void init() {
-        this.formatter = new SimpleDateFormat("MM/dd HH:mm:ss", Locale.getDefault());
-        this.handler = new Handler(Looper.getMainLooper());
+    public void init(String format) {
+        this.formatter = new SimpleDateFormat(format, Locale.getDefault());
         this.date = new Date();
     }
 
     public static void start(TextView view) {
-        get().init();
+        start(view, "HH:mm:ss");
+    }
+
+    public static void start(TextView view, String format) {
+        get().init(format);
         get().run(view);
     }
 
@@ -46,7 +48,7 @@ public class Clock {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                handler.post(() -> doJob(view));
+                App.post(() -> doJob(view));
             }
         }, 0, 1000);
     }

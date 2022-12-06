@@ -8,14 +8,14 @@ import androidx.room.PrimaryKey;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.db.AppDatabase;
-import com.google.gson.Gson;
+import com.fongmi.android.tv.gson.StringAdapter;
 import com.google.gson.JsonElement;
 import com.google.gson.annotations.SerializedName;
 
 import java.util.Collections;
 import java.util.List;
 
-@Entity(ignoredColumns = {"type", "api", "playUrl", "ext", "jar", "categories"})
+@Entity(ignoredColumns = {"type", "api", "playUrl", "playerType", "ext", "jar", "categories"})
 public class Site {
 
     @NonNull
@@ -25,11 +25,13 @@ public class Site {
     @SerializedName("name")
     private String name;
     @SerializedName("type")
-    private int type;
+    private Integer type;
     @SerializedName("api")
     private String api;
     @SerializedName("playUrl")
     private String playUrl;
+    @SerializedName("playerType")
+    private Integer playerType;
     @SerializedName("searchable")
     private Integer searchable;
     @SerializedName("filterable")
@@ -45,7 +47,7 @@ public class Site {
 
     public static Site objectFrom(JsonElement element) {
         try {
-            return new Gson().fromJson(element, Site.class);
+            return StringAdapter.gson().fromJson(element, Site.class);
         } catch (Exception e) {
             return new Site();
         }
@@ -80,8 +82,8 @@ public class Site {
         this.name = name;
     }
 
-    public int getType() {
-        return type;
+    public Integer getType() {
+        return type == null ? 0 : type;
     }
 
     public void setType(int type) {
@@ -172,6 +174,12 @@ public class Site {
 
     public int getFilterIcon() {
         return isFilterable() ? R.drawable.ic_filter_on : R.drawable.ic_filter_off;
+    }
+
+    public int getPlayerType() {
+        if (playerType == null) return -1;
+        if (playerType == 1) return 1;
+        return 0;
     }
 
     public static Site find(String key) {

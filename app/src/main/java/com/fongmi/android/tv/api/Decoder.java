@@ -9,6 +9,8 @@ import com.google.common.io.BaseEncoding;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -21,6 +23,7 @@ public class Decoder {
         url = url.contains(";") ? url.split(";")[0] : url;
         String data = getData(url);
         if (Json.valid(data)) return data;
+        if (data.isEmpty()) throw new Exception();
         if (data.contains("**")) data = base64(data);
         if (data.startsWith("2423")) data = cbc(data);
         if (key.length() > 0) data = ecb(data, key);
@@ -39,8 +42,8 @@ public class Decoder {
         try {
             File file = FileUtil.getJar(jar);
             if (md5.length() > 0 && FileUtil.equals(jar, md5)) return file;
-            String data = getData(jar.substring(4));
-            data = data.substring(data.indexOf("**") + 2);
+            String data = extract(getData(jar.substring(4)));
+            if (data.isEmpty()) return FileUtil.getJar(jar);
             return FileUtil.write(file, Base64.decode(data, Base64.DEFAULT));
         } catch (Exception ignored) {
             return FileUtil.getJar(jar);
@@ -78,7 +81,14 @@ public class Decoder {
     }
 
     private static String base64(String data) {
-        return new String(Base64.decode(data.substring(data.indexOf("**") + 2), Base64.DEFAULT));
+        String extract = extract(data);
+        if (extract.isEmpty()) return data;
+        return new String(Base64.decode(extract, Base64.DEFAULT));
+    }
+
+    private static String extract(String data) {
+        Matcher matcher = Pattern.compile("[A-Za-z0-9]{8}\\*\\*").matcher(data);
+        return matcher.find() ? data.substring(data.indexOf(matcher.group()) + 10) : "";
     }
 
     private static byte[] padEnd(String key) {

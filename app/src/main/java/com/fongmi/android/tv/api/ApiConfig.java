@@ -1,12 +1,10 @@
 package com.fongmi.android.tv.api;
 
-import android.os.Handler;
-import android.os.Looper;
 import android.text.TextUtils;
 
+import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Config;
-import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.net.Callback;
@@ -16,7 +14,6 @@ import com.fongmi.android.tv.utils.Prefers;
 import com.fongmi.android.tv.utils.Utils;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderNull;
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -35,14 +32,13 @@ public class ApiConfig {
     private List<String> ads;
     private List<String> flags;
     private List<Parse> parses;
-    private List<Live> lives;
     private List<Site> sites;
     private JarLoader jLoader;
     private PyLoader pLoader;
-    private Handler handler;
+    private Config config;
+    private String wall;
     private Parse parse;
     private Site home;
-    private int cid;
 
     private static class Loader {
         static volatile ApiConfig INSTANCE = new ApiConfig();
@@ -52,8 +48,12 @@ public class ApiConfig {
         return Loader.INSTANCE;
     }
 
-    public static String getHomeName() {
-        return get().getHome().getName();
+    public static int getCid() {
+        return get().getConfig().getId();
+    }
+
+    public static String getUrl() {
+        return get().getConfig().getUrl();
     }
 
     public static int getHomeIndex() {
@@ -64,57 +64,73 @@ public class ApiConfig {
         return get().getSite(key).getName();
     }
 
-    public static int getCid() {
-        return get().cid;
-    }
-
     public ApiConfig init() {
+        this.home = null;
+        this.wall = null;
+        this.config = Config.vod();
         this.ads = new ArrayList<>();
         this.sites = new ArrayList<>();
-        this.lives = new ArrayList<>();
         this.flags = new ArrayList<>();
         this.parses = new ArrayList<>();
         this.jLoader = new JarLoader();
         this.pLoader = new PyLoader();
-        this.handler = new Handler(Looper.getMainLooper());
         return this;
     }
 
-    public void loadConfig(Callback callback) {
-        loadConfig(false, callback);
+    public ApiConfig config(Config config) {
+        this.config = config;
+        return this;
     }
 
-    public void loadConfig(boolean cache, Callback callback) {
+    public ApiConfig clear() {
+        this.home = null;
+        this.wall = null;
+        this.ads.clear();
+        this.sites.clear();
+        this.flags.clear();
+        this.parses.clear();
+        this.jLoader.clear();
+        this.pLoader.clear();
+        return this;
+    }
+
+    public void load(Callback callback) {
+        load(false, callback);
+    }
+
+    public void load(boolean cache, Callback callback) {
         new Thread(() -> {
-            if (cache) loadCache(Prefers.getUrl(), callback);
-            else loadConfig(Prefers.getUrl(), callback);
+            if (cache) loadCache(callback);
+            else loadConfig(callback);
         }).start();
     }
 
-    private void loadConfig(String url, Callback callback) {
+    private void loadConfig(Callback callback) {
         try {
-            parseConfig(new Gson().fromJson(Decoder.getJson(url), JsonObject.class), callback);
+            parseConfig(JsonParser.parseString(Decoder.getJson(config.getUrl())).getAsJsonObject(), callback);
         } catch (Exception e) {
-            if (url.isEmpty()) handler.post(() -> callback.error(0));
-            else loadCache(url, callback);
+            if (config.getUrl().isEmpty()) App.post(() -> callback.error(0));
+            else loadCache(callback);
+            LiveConfig.get().load();
             e.printStackTrace();
         }
     }
 
-    private void loadCache(String url, Callback callback) {
-        String json = Config.find(url).getJson();
-        if (!TextUtils.isEmpty(json)) parseConfig(JsonParser.parseString(json).getAsJsonObject(), callback);
-        else handler.post(() -> callback.error(R.string.error_config_get));
+    private void loadCache(Callback callback) {
+        if (!TextUtils.isEmpty(config.getJson())) parseConfig(JsonParser.parseString(config.getJson()).getAsJsonObject(), callback);
+        else App.post(() -> callback.error(R.string.error_config_get));
     }
 
     private void parseConfig(JsonObject object, Callback callback) {
         try {
             parseJson(object);
-            jLoader.parseJar("", Json.safeString(object, "spider", ""));
-            handler.post(() -> callback.success(object.toString()));
+            parseLive(object);
+            jLoader.parseJar("", Json.safeString(object, "spider"));
+            config.json(object.toString()).update();
+            App.post(callback::success);
         } catch (Exception e) {
             e.printStackTrace();
-            handler.post(() -> callback.error(R.string.error_config_parse));
+            App.post(() -> callback.error(R.string.error_config_parse));
         }
     }
 
@@ -122,7 +138,7 @@ public class ApiConfig {
         for (JsonElement element : Json.safeListElement(object, "sites")) {
             Site site = Site.objectFrom(element).sync();
             site.setExt(parseExt(site.getExt()));
-            if (site.getKey().equals(Prefers.getHome())) setHome(site);
+            if (site.getKey().equals(config.getHome())) setHome(site);
             if (!sites.contains(site)) sites.add(site);
         }
         for (JsonElement element : Json.safeListElement(object, "parses")) {
@@ -134,13 +150,23 @@ public class ApiConfig {
         if (parse == null) setParse(parses.isEmpty() ? new Parse() : parses.get(0));
         flags.addAll(Json.safeListString(object, "flags"));
         ads.addAll(Json.safeListString(object, "ads"));
+        setWall(Json.safeString(object, "wallpaper"));
+    }
+
+    private void parseLive(JsonObject object) {
+        boolean hasLive = object.has("lives");
+        if (hasLive) Config.create(config.getUrl(), 1);
+        boolean loadApi = hasLive && LiveConfig.get().isSame(config.getUrl());
+        if (loadApi) LiveConfig.get().clear().config(Config.find(config.getUrl(), 1).update()).parse(object);
+        else LiveConfig.get().load();
     }
 
     private String parseExt(String ext) {
         if (ext.startsWith("http")) return ext;
         else if (ext.startsWith("file")) return FileUtil.read(ext);
         else if (ext.startsWith("img+")) return Decoder.getExt(ext);
-        else if (ext.endsWith(".json")) return parseExt(Utils.convert(ext));
+        else if (ext.contains("http") || ext.contains("file")) return ext;
+        else if (ext.endsWith(".txt") || ext.endsWith(".json") || ext.endsWith(".py")) return parseExt(Utils.convert(config.getUrl(), ext));
         return ext;
     }
 
@@ -165,13 +191,13 @@ public class ApiConfig {
     }
 
     public Site getSite(String key) {
-        int index = sites.indexOf(Site.get(key));
-        return index == -1 ? new Site() : sites.get(index);
+        int index = getSites().indexOf(Site.get(key));
+        return index == -1 ? new Site() : getSites().get(index);
     }
 
     public Parse getParse(String name) {
-        int index = parses.indexOf(Parse.get(name));
-        return index == -1 ? null : parses.get(index);
+        int index = getParses().indexOf(Parse.get(name));
+        return index == -1 ? null : getParses().get(index);
     }
 
     public List<Site> getSites() {
@@ -182,23 +208,16 @@ public class ApiConfig {
         return parses == null ? Collections.emptyList() : parses;
     }
 
-    public String getAds() {
-        return ads == null ? "" : ads.toString();
-    }
-
     public List<String> getFlags() {
         return flags == null ? Collections.emptyList() : flags;
     }
 
-    public Site getHome() {
-        return home == null ? new Site() : home;
+    public String getAds() {
+        return ads == null ? "" : ads.toString();
     }
 
-    public void setHome(Site home) {
-        this.home = home;
-        this.home.setActivated(true);
-        Prefers.putHome(home.getKey());
-        for (Site item : sites) item.setActivated(home);
+    public Config getConfig() {
+        return config == null ? Config.vod() : config;
     }
 
     public Parse getParse() {
@@ -212,19 +231,23 @@ public class ApiConfig {
         for (Parse item : parses) item.setActivated(parse);
     }
 
-    public void setCid(int cid) {
-        this.cid = cid;
+    public String getWall() {
+        return TextUtils.isEmpty(wall) ? "" : wall;
     }
 
-    public ApiConfig clear() {
-        this.ads.clear();
-        this.sites.clear();
-        this.lives.clear();
-        this.flags.clear();
-        this.parses.clear();
-        this.jLoader.clear();
-        this.pLoader.clear();
-        this.home = null;
-        return this;
+    private void setWall(String wall) {
+        if (Config.wall().getUrl().isEmpty()) WallConfig.get().setUrl(wall);
+        this.wall = wall;
+    }
+
+    public Site getHome() {
+        return home == null ? new Site() : home;
+    }
+
+    public void setHome(Site home) {
+        this.home = home;
+        this.home.setActivated(true);
+        config.home(home.getKey()).update();
+        for (Site item : getSites()) item.setActivated(home);
     }
 }

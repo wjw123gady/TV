@@ -168,6 +168,10 @@ public class Vod {
         return getVodRemarks().isEmpty() ? View.GONE : View.VISIBLE;
     }
 
+    public boolean isFolder() {
+        return getVodTag().equals("folder");
+    }
+
     public boolean shouldSearch() {
         return getVodId().isEmpty() || getVodId().startsWith("msearch:");
     }
@@ -226,8 +230,9 @@ public class Vod {
             return activated;
         }
 
-        public void setActivated(boolean activated) {
-            this.activated = activated;
+        public void setActivated(Flag item) {
+            this.activated = item.equals(this);
+            if (activated) item.episodes = episodes;
         }
 
         public void createEpisode(String data) {

@@ -16,7 +16,6 @@ import com.fongmi.android.tv.ui.adapter.KeepAdapter;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.utils.Prefers;
 
-import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
@@ -36,7 +35,6 @@ public class KeepActivity extends BaseActivity implements KeepAdapter.OnClickLis
 
     @Override
     protected void initView() {
-        EventBus.getDefault().register(this);
         setRecyclerView();
         getKeep();
     }
@@ -50,15 +48,13 @@ public class KeepActivity extends BaseActivity implements KeepAdapter.OnClickLis
     }
 
     private void getKeep() {
-        mAdapter.addAll(Keep.getAll());
+        mAdapter.addAll(Keep.getVod());
     }
 
     private void loadConfig(Config config, Keep item) {
-        Prefers.putUrl(config.getUrl());
-        ApiConfig.get().setCid(config.update().getId());
-        ApiConfig.get().clear().loadConfig(true, new Callback() {
+        ApiConfig.get().clear().config(config).load(true, new Callback() {
             @Override
-            public void success(String json) {
+            public void success() {
                 DetailActivity.start(getActivity(), item.getSiteKey(), item.getVodId());
                 RefreshEvent.history();
                 RefreshEvent.video();
@@ -104,11 +100,5 @@ public class KeepActivity extends BaseActivity implements KeepAdapter.OnClickLis
     public void onBackPressed() {
         if (mAdapter.isDelete()) mAdapter.setDelete(false);
         else super.onBackPressed();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        EventBus.getDefault().unregister(this);
     }
 }

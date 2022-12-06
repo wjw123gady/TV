@@ -40,6 +40,10 @@ public class ResUtil {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getDisplayMetrics());
     }
 
+    public static int getDrawable(String resId) {
+        return App.get().getResources().getIdentifier(resId, "drawable", App.get().getPackageName());
+    }
+
     public static String getString(@StringRes int resId) {
         return App.get().getString(resId);
     }
@@ -48,7 +52,7 @@ public class ResUtil {
         return App.get().getString(resId, formatArgs);
     }
 
-    public static CharSequence[] getStringArray(@ArrayRes int resId) {
+    public static String[] getStringArray(@ArrayRes int resId) {
         return App.get().getResources().getStringArray(resId);
     }
 
