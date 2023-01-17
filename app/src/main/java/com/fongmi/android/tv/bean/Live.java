@@ -8,13 +8,14 @@ import com.google.gson.JsonElement;
 import com.google.gson.annotations.SerializedName;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public class Live {
 
     @SerializedName("type")
     private int type;
+    @SerializedName("boot")
+    private boolean boot;
     @SerializedName("name")
     private String name;
     @SerializedName("group")
@@ -27,10 +28,14 @@ public class Live {
     private String epg;
     @SerializedName("ua")
     private String ua;
+    @SerializedName("playerType")
+    private Integer playerType;
     @SerializedName("channels")
     private List<Channel> channels;
     @SerializedName("groups")
     private List<Group> groups;
+    @SerializedName("core")
+    private Core core;
 
     private boolean activated;
 
@@ -53,6 +58,10 @@ public class Live {
 
     public int getType() {
         return type;
+    }
+
+    public boolean isBoot() {
+        return boot;
     }
 
     public String getName() {
@@ -79,12 +88,20 @@ public class Live {
         return TextUtils.isEmpty(ua) ? "" : ua;
     }
 
-    public List<Channel> getChannels() {
+    public int getPlayerType() {
+        return playerType == null ? -1 : playerType == 1 ? 1 : 0;
+    }
+
+    private List<Channel> getChannels() {
         return channels = channels == null ? new ArrayList<>() : channels;
     }
 
     public List<Group> getGroups() {
         return groups = groups == null ? new ArrayList<>() : groups;
+    }
+
+    public Core getCore() {
+        return core;
     }
 
     public boolean isActivated() {
@@ -97,10 +114,6 @@ public class Live {
 
     public void setActivated(Live item) {
         this.activated = item.equals(this);
-    }
-
-    public String getActivatedName() {
-        return (isActivated() ? "√ " : "").concat(getName());
     }
 
     public Live check() {
@@ -122,13 +135,5 @@ public class Live {
         if (!(obj instanceof Live)) return false;
         Live it = (Live) obj;
         return getName().equals(it.getName()) && getUrl().equals(it.getUrl());
-    }
-
-    public static class Sorter implements Comparator<Live> {
-
-        @Override
-        public int compare(Live live1, Live live2) {
-            return Boolean.compare(live2.isActivated(), live1.isActivated());
-        }
     }
 }

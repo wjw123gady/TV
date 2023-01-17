@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.utils;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
@@ -11,9 +12,12 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 
+import androidx.fragment.app.FragmentActivity;
+
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.server.Server;
 import com.google.android.exoplayer2.util.Util;
+import com.permissionx.guolindev.PermissionX;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -69,8 +73,8 @@ public class Utils {
 
     public static boolean isVideoFormat(String url, Map<String, String> headers) {
         if (Sniffer.CUSTOM.matcher(url).find()) return true;
-        if (headers.containsKey("Accept") && headers.get("Accept").contains("image")) return false;
-        if (url.contains(".js") || url.contains(".css")) return false;
+        if (headers.containsKey("Accept") && headers.get("Accept").startsWith("image")) return false;
+        if (url.contains("url=http") || url.contains(".js") || url.contains(".css") || url.contains(".html")) return false;
         return Sniffer.RULE.matcher(url).find();
     }
 
@@ -89,6 +93,10 @@ public class Utils {
         if (text.contains("/localhost/")) text = text.replace("/localhost/", "/");
         if (text.startsWith("clan")) text = text.replace("clan", "file");
         return text;
+    }
+
+    public static String convert(String text) {
+        return text.startsWith("file") ? Server.get().getAddress(true) + "/" + text : text;
     }
 
     public static String convert(String baseUrl, String text) {
@@ -161,5 +169,9 @@ public class Utils {
         if (imm != null && windowToken != null) {
             imm.hideSoftInputFromWindow(windowToken, 0);
         }
+    }
+
+    public static boolean hasPermission(FragmentActivity activity) {
+        return PermissionX.isGranted(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
     }
 }

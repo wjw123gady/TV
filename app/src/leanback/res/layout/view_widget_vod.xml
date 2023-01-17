@@ -24,7 +24,7 @@
             android:shadowRadius="1"
             android:singleLine="true"
             android:textColor="@color/white"
-            android:textSize="18sp"
+            android:textSize="20sp"
             tools:text="慶餘年第一季：第一集" />
 
         <TextView
@@ -39,7 +39,7 @@
             android:shadowDy="2"
             android:shadowRadius="1"
             android:textColor="@color/white"
-            android:textSize="14sp"
+            android:textSize="16sp"
             tools:text="1920 x 1080" />
 
         <TextView
@@ -54,15 +54,32 @@
             android:shadowDy="2"
             android:shadowRadius="1"
             android:textColor="@color/white"
-            android:textSize="18sp"
+            android:textSize="20sp"
             tools:text="09:20:00" />
 
     </RelativeLayout>
 
-    <include
+    <LinearLayout
         android:id="@+id/progress"
-        layout="@layout/view_progress"
-        android:visibility="gone" />
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:visibility="visible">
+
+        <include layout="@layout/view_progress" />
+
+        <TextView
+            android:id="@+id/traffic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:visibility="gone"
+            tools:text="120KB/s" />
+
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/error"
@@ -109,7 +126,6 @@
             android:id="@+id/action"
             android:layout_width="56dp"
             android:layout_height="56dp"
-            android:background="?attr/selectableItemBackground"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_play" />
 

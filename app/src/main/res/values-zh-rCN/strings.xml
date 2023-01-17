@@ -41,18 +41,18 @@
     <string name="play_next">下一集</string>
     <string name="play_prev">上一集</string>
     <string name="play_ready">准备播放：<xliff:g name="name">%s</xliff:g></string>
-    <string name="play_replay">重播</string>
-    <string name="play_reset">重置</string>
-    <string name="play_tracks">轨道</string>
+    <string name="play_track_text">字幕</string>
+    <string name="play_track_audio">音轨</string>
     <string name="play_invert">反转</string>
-    <string name="play_op">片头</string>
-    <string name="play_ed">片尾</string>
+    <string name="play_across">跨类</string>
+    <string name="play_oped">片头片尾</string>
     <string name="play_reverse">倒序</string>
     <string name="play_forward">→</string>
     <string name="play_backward">←</string>
     <string name="play_forward_hint">已切换正序播放</string>
     <string name="play_backward_hint">已切换倒序播放</string>
-    <string name="play_switching">正在切换线路至「<xliff:g name="name">%s</xliff:g>」</string>
+    <string name="play_switch_flag">正在切换线路至「<xliff:g name="name">%s</xliff:g>」</string>
+    <string name="play_switch_site">正在切换站源至「<xliff:g name="name">%s</xliff:g>」</string>
 
     <!-- Parse -->
     <string name="parse">解析</string>
@@ -69,6 +69,7 @@
     <string name="setting_quality">图片品质</string>
     <string name="setting_size">图片尺寸</string>
     <string name="setting_version">版本</string>
+    <string name="setting_storage">权限</string>
 
     <!-- Dialog -->
     <string name="dialog_positive">确定</string>
@@ -84,6 +85,7 @@
     <string name="error_play_parse">播放地址解析失败</string>
     <string name="error_play_load">播放数据加载失败</string>
     <string name="error_play_format">不支援的影片格式</string>
+    <string name="error_play_timeout">连接超时</string>
     <string name="error_episode">暂无播放数据</string>
     <string name="error_empty">找不到数据</string>
 
@@ -130,6 +132,11 @@
         <item>4:3</item>
         <item>填充</item>
         <item>裁剪</item>
+    </string-array>
+
+    <string-array name="select_reset">
+        <item>刷新</item>
+        <item>重播</item>
     </string-array>
 
 </resources>

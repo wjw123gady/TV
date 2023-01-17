@@ -2,17 +2,20 @@ package com.fongmi.android.tv;
 
 public class Constant {
 
-    public static final String PROXY = "https://ghproxy.com/";
-    public static final String REPO = "https://raw.githubusercontent.com/FongMi/TV/";
-    public static final String RELEASE = "release";
-    public static final String KITKAT = "kitkat";
-    public static final String DEV = "dev";
-
-    public static String getReleasePath(String path) {
-        return PROXY + REPO + RELEASE + path;
-    }
-
-    public static String getBranchPath(String branch, String path) {
-        return PROXY + REPO + branch + path;
-    }
+    //快進時間單位 10 秒
+    public static final int INTERVAL_SEEK = 10 * 1000;
+    //控件隱藏時間 5 秒
+    public static final int INTERVAL_HIDE = 5 * 1000;
+    //網路偵測間隔 0.5 秒
+    public static final int INTERVAL_TRAFFIC = 500;
+    //點播超時時間 30 秒
+    public static final int TIMEOUT_VOD = 30 * 1000;
+    //直播超時時間 10 秒
+    public static final int TIMEOUT_LIVE = 10 * 1000;
+    //網路超時時間 30 秒
+    public static final int TIMEOUT_HTTP = 30 * 1000;
+    //代理超時時間 5 秒
+    public static final int TIMEOUT_GITHUB = 5 * 1000;
+    //搜尋線程數量 5 個
+    public static final int THREAD_POOL = 5;
 }
