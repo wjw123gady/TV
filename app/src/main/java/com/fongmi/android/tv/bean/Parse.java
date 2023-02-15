@@ -10,6 +10,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.annotations.SerializedName;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,13 @@ public class Parse {
         parse.setHeader(header);
         parse.setType(type);
         parse.setUrl(url);
+        return parse;
+    }
+
+    public static Parse god() {
+        Parse parse = new Parse();
+        parse.setName("超級解析");
+        parse.setType(4);
         return parse;
     }
 
@@ -100,6 +108,14 @@ public class Parse {
         return Json.toMap(getExt().getHeader());
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof Parse)) return false;
+        Parse it = (Parse) obj;
+        return getName().equals(it.getName());
+    }
+
     public String extUrl() {
         int index = getUrl().indexOf("?");
         if (getExt().isEmpty() || index == -1) return getUrl();
@@ -114,14 +130,6 @@ public class Parse {
         return map;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof Parse)) return false;
-        Parse it = (Parse) obj;
-        return getName().equals(it.getName());
-    }
-
     public static class Ext {
 
         @SerializedName("flag")
@@ -130,7 +138,7 @@ public class Parse {
         private JsonElement header;
 
         public List<String> getFlag() {
-            return flag;
+            return flag == null ? Collections.emptyList() : flag;
         }
 
         public JsonElement getHeader() {

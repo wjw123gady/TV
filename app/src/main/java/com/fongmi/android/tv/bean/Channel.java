@@ -120,7 +120,7 @@ public class Channel {
     }
 
     public String getUrl() {
-        return url;
+        return TextUtils.isEmpty(url) ? "" : url;
     }
 
     public void setUrl(String url) {
@@ -177,6 +177,10 @@ public class Channel {
 
     public boolean isOnly() {
         return getUrls().size() == 1;
+    }
+
+    public boolean isLast() {
+        return getLine() == getUrls().size() - 1;
     }
 
     public String getLineText() {

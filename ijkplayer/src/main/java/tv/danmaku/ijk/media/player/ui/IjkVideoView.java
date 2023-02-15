@@ -13,6 +13,7 @@ import android.widget.MediaController;
 
 import androidx.annotation.NonNull;
 
+import java.util.List;
 import java.util.Map;
 
 import tv.danmaku.ijk.media.player.IMediaPlayer;
@@ -104,11 +105,10 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     public void setRender(int render) {
         mCurrentRender = render;
+        if (mIjkPlayer == null) return;
         switch (render) {
             case RENDER_TEXTURE_VIEW:
-                TextureRenderView texture = new TextureRenderView(getContext());
-                texture.getSurfaceHolder().bindToMediaPlayer(mIjkPlayer);
-                setRenderView(texture);
+                setRenderView(new TextureRenderView(getContext()));
                 break;
             case RENDER_SURFACE_VIEW:
                 setRenderView(new SurfaceRenderView(getContext()));
@@ -117,6 +117,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     }
 
     private void setRenderView(IRenderView renderView) {
+        removeRenderView();
         mRenderView = renderView;
         setResizeMode(mCurrentAspectRatio);
         mContentFrame.addView(mRenderView.getView(), 0, new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER));
@@ -137,7 +138,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     }
 
     public void setMediaSource(String path, Map<String, String> headers) {
-        setVideoURI(Uri.parse(path.trim()), headers);
+        setVideoURI(Uri.parse(path.trim().replace("\\", "")), headers);
     }
 
     public void setVideoURI(Uri uri, Map<String, String> headers) {
@@ -175,9 +176,9 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     }
 
     private void fixUserAgent() {
-        if (mHeaders == null || !mHeaders.containsKey("User-Agent")) return;
-        mIjkPlayer.setOption(format, "user_agent", mHeaders.get("User-Agent"));
-        mHeaders.remove("User-Agent");
+        if (!mHeaders.containsKey(Utils.USER_AGENT)) mHeaders.put(Utils.USER_AGENT, Utils.getUserAgent(mAppContext));
+        mIjkPlayer.setOption(format, "user_agent", mHeaders.get(Utils.USER_AGENT));
+        mHeaders.remove(Utils.USER_AGENT);
     }
 
     IMediaPlayer.OnVideoSizeChangedListener mSizeChangedListener = new IMediaPlayer.OnVideoSizeChangedListener() {
@@ -316,9 +317,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
         @Override
         public void onSurfaceCreated(@NonNull IRenderView.ISurfaceHolder holder, int width, int height) {
-            mSurfaceHolder = holder;
             if (mIjkPlayer != null) bindSurfaceHolder(mIjkPlayer, holder);
-            else openVideo();
+            mSurfaceHolder = holder;
         }
 
         @Override
@@ -457,14 +457,12 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     }
 
     public boolean haveTrack(int type) {
-        IjkTrackInfo[] trackInfos = mIjkPlayer.getTrackInfo();
-        if (trackInfos == null) return false;
         int count = 0;
-        for (IjkTrackInfo trackInfo : trackInfos) if (trackInfo.getTrackType() == type) ++count;
+        for (IjkTrackInfo trackInfo : getTrackInfo()) if (trackInfo.getTrackType() == type) ++count;
         return count > 0;
     }
 
-    public IjkTrackInfo[] getTrackInfo() {
+    public List<IjkTrackInfo> getTrackInfo() {
         return mIjkPlayer.getTrackInfo();
     }
 
@@ -474,28 +472,39 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     public void selectTrack(int type, int track) {
         int selected = getSelectedTrack(type);
-        if (selected == track) return;
-        long position = getCurrentPosition();
-        mIjkPlayer.selectTrack(track);
-        mSubtitleView.setText("");
-        if (position != 0) seekTo(position);
+        List<IjkTrackInfo> trackInfos = getTrackInfo();
+        for (int index = 0; index < trackInfos.size(); index++) {
+            IjkTrackInfo trackInfo = trackInfos.get(index);
+            if (trackInfo.getTrackType() != type) continue;
+            if (index == track && selected != track) {
+                long position = getCurrentPosition();
+                mSubtitleView.setText("");
+                mIjkPlayer.selectTrack(index);
+                if (position != 0) seekTo(position);
+            }
+        }
     }
 
     public void deselectTrack(int type, int track) {
         int selected = getSelectedTrack(type);
-        if (selected != track) return;
-        long position = getCurrentPosition();
-        mIjkPlayer.deselectTrack(track);
-        mSubtitleView.setText("");
-        if (position != 0) seekTo(position);
+        List<IjkTrackInfo> trackInfos = getTrackInfo();
+        for (int index = 0; index < trackInfos.size(); index++) {
+            IjkTrackInfo trackInfo = trackInfos.get(index);
+            if (trackInfo.getTrackType() != type) continue;
+            if (index == track && selected == track) {
+                long position = getCurrentPosition();
+                mSubtitleView.setText("");
+                mIjkPlayer.deselectTrack(track);
+                if (position != 0) seekTo(position);
+            }
+        }
     }
 
     private void setPreferredTextLanguage() {
-        IjkTrackInfo[] trackInfos = mIjkPlayer.getTrackInfo();
-        if (trackInfos == null) return;
+        List<IjkTrackInfo> trackInfos = getTrackInfo();
         int selected = getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_TEXT);
-        for (int index = 0; index < trackInfos.length; index++) {
-            IjkTrackInfo trackInfo = trackInfos[index];
+        for (int index = 0; index < trackInfos.size(); index++) {
+            IjkTrackInfo trackInfo = trackInfos.get(index);
             if (trackInfo.getTrackType() != ITrackInfo.MEDIA_TRACK_TYPE_TEXT) continue;
             if (trackInfo.getLanguage().equals("zh") && index != selected) {
                 mIjkPlayer.selectTrack(index);
@@ -523,16 +532,18 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         mIjkPlayer.setOption(player, "framedrop", 1);
         mIjkPlayer.setOption(player, "max-buffer-size", 15 * 1024 * 1024);
         mIjkPlayer.setOption(player, "mediacodec", mCurrentDecode);
+        mIjkPlayer.setOption(player, "mediacodec-hevc", mCurrentDecode);
+        mIjkPlayer.setOption(player, "mediacodec-all-videos", mCurrentDecode);
         mIjkPlayer.setOption(player, "mediacodec-auto-rotate", mCurrentDecode);
         mIjkPlayer.setOption(player, "mediacodec-handle-resolution-change", mCurrentDecode);
-        mIjkPlayer.setOption(player, "mediacodec-hevc", mCurrentDecode);
         mIjkPlayer.setOption(player, "opensles", 0);
         mIjkPlayer.setOption(player, "overlay-format", IjkMediaPlayer.SDL_FCC_RV32);
         mIjkPlayer.setOption(player, "reconnect", 1);
         mIjkPlayer.setOption(player, "soundtouch", 1);
         mIjkPlayer.setOption(player, "start-on-prepared", 1);
         mIjkPlayer.setOption(player, "subtitle", 1);
-        if (url.startsWith("rtsp") || url.contains("/udp/") || url.contains("/rtp/")) {
+        mIjkPlayer.setOption(format, "protocol_whitelist", "async,cache,crypto,file,http,https,ijkhttphook,ijkinject,ijklivehook,ijklongurl,ijksegment,ijktcphook,pipe,rtp,tcp,tls,udp,ijkurlhook,data");
+        if (url.contains("rtsp") || url.contains("udp") || url.contains("rtp")) {
             mIjkPlayer.setOption(format, "infbuf", 1);
             mIjkPlayer.setOption(format, "rtsp_transport", "tcp");
             mIjkPlayer.setOption(format, "rtsp_flags", "prefer_tcp");
