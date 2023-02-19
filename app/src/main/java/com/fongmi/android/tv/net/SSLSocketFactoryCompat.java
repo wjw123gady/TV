@@ -8,6 +8,7 @@ import java.security.cert.X509Certificate;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
@@ -15,6 +16,8 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
 public class SSLSocketFactoryCompat extends SSLSocketFactory {
+
+    public static final HostnameVerifier hostnameVerifier = (hostname, session) -> true;
 
     public static final X509TrustManager trustAllCert = new X509TrustManager() {
 
@@ -50,14 +53,14 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
 
     private final SSLSocketFactory defaultFactory;
 
-    public SSLSocketFactoryCompat(X509TrustManager tm) {
+    public SSLSocketFactoryCompat() {
         try {
             SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, (tm != null) ? new X509TrustManager[]{tm} : null, null);
+            sslContext.init(null, new X509TrustManager[]{SSLSocketFactoryCompat.trustAllCert}, null);
             defaultFactory = sslContext.getSocketFactory();
             HttpsURLConnection.setDefaultSSLSocketFactory(defaultFactory);
         } catch (GeneralSecurityException e) {
-            throw new AssertionError(); // The system has no TLS. Just give up.
+            throw new AssertionError();
         }
     }
 

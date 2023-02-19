@@ -35,14 +35,13 @@ public class CustomHorizontalGridView extends HorizontalGridView {
     @Override
     protected void initAttributes(@NonNull Context context, @Nullable AttributeSet attrs) {
         super.initAttributes(context, attrs);
-        this.shake = ResUtil.getAnim(R.anim.shake);
+        this.shake = isInEditMode() ? null : ResUtil.getAnim(R.anim.shake);
     }
 
     @Override
     public View focusSearch(View focused, int direction) {
         if (focused != null) {
-            FocusFinder finder = FocusFinder.getInstance();
-            View found = finder.findNextFocus(this, focused, direction);
+            View found = FocusFinder.getInstance().findNextFocus(this, focused, direction);
             if (direction == View.FOCUS_LEFT || direction == View.FOCUS_RIGHT) {
                 if ((found == null || found.getId() != R.id.text) && getScrollState() == SCROLL_STATE_IDLE) {
                     focused.clearAnimation();
@@ -60,18 +59,9 @@ public class CustomHorizontalGridView extends HorizontalGridView {
     }
 
     public boolean executeKeyEvent(@NonNull KeyEvent event) {
-        boolean handled = false;
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            switch (event.getKeyCode()) {
-                case KeyEvent.KEYCODE_DPAD_LEFT:
-                    handled = arrowScroll(FOCUS_LEFT);
-                    break;
-                case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    handled = arrowScroll(FOCUS_RIGHT);
-                    break;
-            }
-        }
-        return handled;
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT) return arrowScroll(FOCUS_LEFT);
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT) return arrowScroll(FOCUS_RIGHT);
+        return false;
     }
 
     public boolean arrowScroll(int direction) {

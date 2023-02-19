@@ -3,24 +3,32 @@ plugins {
 }
 
 android {
-    compileSdk 32
-    flavorDimensions "default"
+    compileSdk 33
+    flavorDimensions "mode", "api"
 
     defaultConfig {
         applicationId "com.fongmi.android.tv"
         minSdk 21
-        targetSdk 32
-        versionCode 23
-        versionName "1.2.3"
-        ndk { abiFilters "armeabi-v7a", "arm64-v8a" }
+        targetSdk 29
+        ndk { abiFilters "armeabi-v7a" }
     }
 
     productFlavors {
         leanback {
-            dimension "default"
+            dimension "mode"
+            versionCode 66
+            versionName "1.6.6"
         }
         mobile {
-            dimension "default"
+            dimension "mode"
+            versionCode 1
+            versionName "1.0.1"
+        }
+        java {
+            dimension = "api"
+        }
+        python {
+            dimension = "api"
         }
     }
 
@@ -44,36 +52,42 @@ android {
 
     android.applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            outputFileName = "${variant.productFlavors[0].name}.apk"
+            outputFileName = "${variant.productFlavors[0].name}-${variant.productFlavors[1].name}.apk"
         }
     }
 }
 
 dependencies {
+    implementation project(':drpy')
+    implementation project(':tvbus')
+    implementation project(':zlive')
     implementation project(':catvod')
-    implementation project(':exoplayer-library')
-    implementation project(':exoplayer-extension-rtmp')
-    implementation project(':exoplayer-extension-ffmpeg')
-    implementation 'androidx.appcompat:appcompat:1.4.2'
-    implementation 'androidx.core:core-splashscreen:1.0.0'
+    implementation project(':forcetech')
+    implementation project(':ijkplayer')
+    pythonImplementation project(':pyramid')
+    implementation 'androidx.appcompat:appcompat:1.6.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel:2.5.1'
     implementation 'androidx.preference:preference:1.2.0'
-    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
-    implementation 'androidx.room:room-runtime:2.4.3'
+    implementation 'androidx.room:room-runtime:2.5.0'
     implementation 'cat.ereza:customactivityoncrash:2.4.0'
-    implementation 'com.amulyakhare:com.amulyakhare.textdrawable:1.0.1'
     implementation 'com.github.bassaer:materialdesigncolors:1.0.0'
-    implementation 'com.github.bumptech.glide:glide:4.13.2'
-    implementation 'com.google.android.material:material:1.6.1'
-    implementation 'com.google.code.gson:gson:2.9.1'
-    implementation 'com.google.zxing:core:3.5.0'
-    implementation 'com.makeramen:roundedimageview:2.3.0'
-    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+    implementation 'com.github.bumptech.glide:glide:4.14.2'
+    implementation 'com.google.android.exoplayer:exoplayer:2.18.2'
+    implementation 'com.google.android.material:material:1.8.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.google.net.cronet:cronet-okhttp:0.1.0'
+    implementation 'com.google.zxing:core:3.3.0'
+    implementation 'com.guolindev.permissionx:permissionx:1.7.1'
+    implementation 'com.squareup.okhttp3:okhttp:5.0.0-alpha.10'
+    implementation 'net.java.dev.jna:jna:5.12.1'
+    implementation 'org.apache.commons:commons-compress:1.20'
+    implementation 'org.chromium.net:cronet-embedded:101.4951.41'
     implementation 'org.greenrobot:eventbus:3.3.1'
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
     implementation('org.simpleframework:simple-xml:2.7.1') { exclude group: 'stax', module: 'stax-api' exclude group: 'xpp3', module: 'xpp3' }
     leanbackImplementation 'androidx.leanback:leanback:1.2.0-alpha02'
-    mobileImplementation 'androidx.navigation:navigation-fragment:2.5.1'
-    mobileImplementation 'androidx.navigation:navigation-ui:2.5.1'
-    annotationProcessor 'androidx.room:room-compiler:2.4.3'
-    annotationProcessor 'com.github.bumptech.glide:compiler:4.13.2'
+    leanbackImplementation 'me.jessyan:autosize:1.2.1'
+    annotationProcessor 'androidx.room:room-compiler:2.5.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.14.2'
 }

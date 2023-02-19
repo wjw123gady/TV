@@ -4,11 +4,15 @@ import org.greenrobot.eventbus.EventBus;
 
 public class ServerEvent {
 
-    private final String text;
     private final Type type;
+    private final String text;
 
     public static void search(String text) {
         EventBus.getDefault().post(new ServerEvent(Type.SEARCH, text));
+    }
+
+    public static void update(String text) {
+        EventBus.getDefault().post(new ServerEvent(Type.UPDATE, text));
     }
 
     public static void push(String text) {
@@ -33,6 +37,6 @@ public class ServerEvent {
     }
 
     public enum Type {
-        SEARCH, PUSH, API
+        SEARCH, UPDATE, PUSH, API
     }
 }

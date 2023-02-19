@@ -11,10 +11,17 @@ import androidx.core.content.FileProvider;
 
 import com.fongmi.android.tv.App;
 
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
+import org.apache.commons.compress.utils.IOUtils;
+
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URLConnection;
 import java.security.MessageDigest;
@@ -27,8 +34,16 @@ public class FileUtil {
         return Environment.getExternalStorageDirectory().getAbsolutePath();
     }
 
+    public static File getRootFile(String path) {
+        return new File(getRootPath() + File.separator + path);
+    }
+
     public static File getCacheDir() {
         return App.get().getCacheDir();
+    }
+
+    public static File getCacheDir(String folder) {
+        return new File(getCachePath() + File.separator + folder);
     }
 
     public static String getCachePath() {
@@ -39,15 +54,16 @@ public class FileUtil {
         return new File(getCacheDir(), fileName);
     }
 
-    public static File getJar() {
-        return getCacheFile("spider.jar");
+    public static File getJar(String fileName) {
+        return getCacheFile(Utils.getMd5(fileName).concat(".jar"));
     }
 
-    public static File getJar(String fileName) {
-        return getCacheFile(fileName.concat(".jar"));
+    public static File getWall(int index) {
+        return getCacheFile("wallpaper_" + index);
     }
 
     public static File getLocal(String path) {
+        if (path.contains(getRootPath())) return new File(path);
         return new File(path.replace("file:/", getRootPath()));
     }
 
@@ -60,7 +76,7 @@ public class FileUtil {
         return TextUtils.isEmpty(mimeType) ? "*/*" : mimeType;
     }
 
-    public static File write(File file, byte[] data) throws Exception {
+    public static File write(File file, byte[] data) throws IOException {
         FileOutputStream fos = new FileOutputStream(file);
         fos.write(data);
         fos.flush();
@@ -71,28 +87,60 @@ public class FileUtil {
 
     public static String read(String path) {
         try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(getLocal(path))));
-            StringBuilder sb = new StringBuilder();
-            String text;
-            while ((text = br.readLine()) != null) sb.append(text).append("\n");
-            br.close();
-            return sb.toString();
+            return read(new FileInputStream(getLocal(path)));
         } catch (Exception e) {
             return "";
         }
     }
 
-    public static String convert(String text) {
-        if (TextUtils.isEmpty(text)) return "";
-        if (text.startsWith("clan")) return text.replace("clan", "file");
-        if (text.startsWith(".")) text = text.substring(1);
-        if (text.startsWith("/")) text = text.substring(1);
-        Uri uri = Uri.parse(Prefers.getUrl());
-        if (uri.getLastPathSegment() == null) return uri.getScheme() + "://" + text;
-        return uri.toString().replace(uri.getLastPathSegment(), text);
+    public static String read(InputStream is) {
+        try {
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+            StringBuilder sb = new StringBuilder();
+            String text;
+            while ((text = br.readLine()) != null) sb.append(text).append("\n");
+            br.close();
+            return Utils.substring(sb.toString());
+        } catch (Exception e) {
+            return "";
+        }
     }
 
-    private static String getMd5(File file) {
+    public static String getAsset(String fileName) {
+        try {
+            return read(App.get().getAssets().open(fileName));
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    public static void unzip(File target, String path) {
+        try (ZipArchiveInputStream in = new ZipArchiveInputStream(new BufferedInputStream(new FileInputStream(target)))) {
+            ZipArchiveEntry entry;
+            while ((entry = in.getNextZipEntry()) != null) {
+                File out = new File(path, entry.getName());
+                if (entry.isDirectory()) out.mkdirs();
+                else copy(in, out);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    public static void copy(File in, File out) {
+        try {
+            IOUtils.copy(new FileInputStream(in), new FileOutputStream(out));
+        } catch (Exception ignored) {
+        }
+    }
+
+    public static void copy(InputStream in, File out) {
+        try {
+            IOUtils.copy(in, new FileOutputStream(out));
+        } catch (Exception ignored) {
+        }
+    }
+
+    public static String getMd5(File file) {
         try {
             MessageDigest digest = MessageDigest.getInstance("MD5");
             FileInputStream fis = new FileInputStream(file);
@@ -100,17 +148,16 @@ public class FileUtil {
             int count;
             while ((count = fis.read(byteArray)) != -1) digest.update(byteArray, 0, count);
             fis.close();
-            byte[] bytes = digest.digest();
             StringBuilder sb = new StringBuilder();
-            for (byte b : bytes) sb.append(Integer.toString((b & 0xff) + 0x100, 16).substring(1));
+            for (byte b : digest.digest()) sb.append(Integer.toString((b & 0xff) + 0x100, 16).substring(1));
             return sb.toString();
         } catch (Exception e) {
             return "";
         }
     }
 
-    public static boolean equals(String md5) {
-        return getMd5(FileUtil.getJar()).equalsIgnoreCase(md5);
+    public static boolean equals(String jar, String md5) {
+        return getMd5(getJar(jar)).equalsIgnoreCase(md5);
     }
 
     public static void clearDir(File dir) {
@@ -127,12 +174,14 @@ public class FileUtil {
         App.get().startActivity(intent);
     }
 
-    private static void chmod(File file) {
+    public static File chmod(File file) {
         try {
             Process process = Runtime.getRuntime().exec("chmod 777 " + file);
             process.waitFor();
+            return file;
         } catch (Exception e) {
             e.printStackTrace();
+            return file;
         }
     }
 }

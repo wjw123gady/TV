@@ -4,13 +4,16 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 
+import com.fongmi.android.tv.utils.Json;
 import com.fongmi.android.tv.utils.Utils;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.annotations.SerializedName;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Parse {
 
@@ -42,6 +45,21 @@ public class Parse {
         return parse;
     }
 
+    public static Parse get(Integer type, String url, JsonElement header) {
+        Parse parse = new Parse();
+        parse.setHeader(header);
+        parse.setType(type);
+        parse.setUrl(url);
+        return parse;
+    }
+
+    public static Parse god() {
+        Parse parse = new Parse();
+        parse.setName("超級解析");
+        parse.setType(4);
+        return parse;
+    }
+
     public String getName() {
         return TextUtils.isEmpty(name) ? "" : name;
     }
@@ -59,7 +77,7 @@ public class Parse {
     }
 
     public String getUrl() {
-        return TextUtils.isEmpty(url) ? "" : url;
+        return TextUtils.isEmpty(url) ? "" : Utils.checkProxy(url);
     }
 
     public void setUrl(String url) {
@@ -67,7 +85,7 @@ public class Parse {
     }
 
     public Ext getExt() {
-        return ext == null ? new Ext() : ext;
+        return ext = ext == null ? new Ext() : ext;
     }
 
     public boolean isActivated() {
@@ -82,13 +100,25 @@ public class Parse {
         this.activated = item.equals(this);
     }
 
-    public JsonElement getHeader() {
-        return getExt().getHeader();
+    private void setHeader(JsonElement header) {
+        getExt().setHeader(header);
+    }
+
+    public Map<String, String> getHeaders() {
+        return Json.toMap(getExt().getHeader());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof Parse)) return false;
+        Parse it = (Parse) obj;
+        return getName().equals(it.getName());
     }
 
     public String extUrl() {
         int index = getUrl().indexOf("?");
-        if (index == -1) return getUrl();
+        if (getExt().isEmpty() || index == -1) return getUrl();
         return getUrl().substring(0, index + 1) + "cat_ext=" + Utils.getBase64(getExt().toString()) + "&" + getUrl().substring(index + 1);
     }
 
@@ -100,14 +130,6 @@ public class Parse {
         return map;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof Parse)) return false;
-        Parse it = (Parse) obj;
-        return getName().equals(it.getName());
-    }
-
     public static class Ext {
 
         @SerializedName("flag")
@@ -116,11 +138,19 @@ public class Parse {
         private JsonElement header;
 
         public List<String> getFlag() {
-            return flag;
+            return flag == null ? Collections.emptyList() : flag;
         }
 
         public JsonElement getHeader() {
             return header;
+        }
+
+        public void setHeader(JsonElement header) {
+            this.header = header;
+        }
+
+        public boolean isEmpty() {
+            return flag == null && header == null;
         }
 
         @NonNull

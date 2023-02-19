@@ -8,7 +8,7 @@ import java.io.IOException;
 import okhttp3.Call;
 import okhttp3.Response;
 
-public abstract class Callback implements okhttp3.Callback {
+public class Callback implements okhttp3.Callback {
 
     public void success() {
     }

@@ -2,12 +2,14 @@ package com.fongmi.android.tv.bean;
 
 import android.text.TextUtils;
 
-import com.fongmi.android.tv.R;
 import com.google.gson.annotations.SerializedName;
 
 import org.simpleframework.xml.Attribute;
 import org.simpleframework.xml.Root;
 import org.simpleframework.xml.Text;
+
+import java.util.Collections;
+import java.util.List;
 
 @Root(strict = false)
 public class Class {
@@ -23,18 +25,42 @@ public class Class {
     @SerializedName("type_flag")
     private String typeFlag;
 
+    @SerializedName("filters")
+    private List<Filter> filters;
+
     private Boolean filter;
+    private boolean activated;
 
     public String getTypeId() {
         return typeId;
+    }
+
+    public void setTypeId(String typeId) {
+        this.typeId = typeId;
     }
 
     public String getTypeName() {
         return typeName;
     }
 
+    public void setTypeName(String typeName) {
+        this.typeName = typeName;
+    }
+
     public String getTypeFlag() {
         return TextUtils.isEmpty(typeFlag) ? "" : typeFlag;
+    }
+
+    public void setTypeFlag(String typeFlag) {
+        this.typeFlag = typeFlag;
+    }
+
+    public List<Filter> getFilters() {
+        return filters == null ? Collections.emptyList() : filters;
+    }
+
+    public void setFilters(List<Filter> filters) {
+        this.filters = filters;
     }
 
     public void setFilter(Boolean filter) {
@@ -45,13 +71,17 @@ public class Class {
         return filter;
     }
 
-    public Class toggleFilter() {
-        setFilter(!getFilter());
-        return this;
+    public boolean isActivated() {
+        return activated;
     }
 
-    public int getIcon() {
-        return getFilter() == null ? 0 : getFilter() ? R.drawable.ic_filter_off_small : R.drawable.ic_filter_on_small;
+    public void setActivated(boolean activated) {
+        this.activated = activated;
+    }
+
+    public boolean toggleFilter() {
+        setFilter(!getFilter());
+        return getFilter();
     }
 
     @Override

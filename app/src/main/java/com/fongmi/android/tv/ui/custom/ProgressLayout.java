@@ -79,6 +79,11 @@ public class ProgressLayout extends RelativeLayout {
         switchState(State.CONTENT);
     }
 
+    public void showContent(boolean flag, int size) {
+        if (flag && size == 0) showEmpty();
+        else showContent();
+    }
+
     public void switchState(State state) {
         if (mState == state) return;
         mState = state;
@@ -111,7 +116,7 @@ public class ProgressLayout extends RelativeLayout {
     private void showView(View view) {
         view.setAlpha(0f);
         view.setVisibility(VISIBLE);
-        view.animate().alpha(1f).setDuration(250).setListener(null);
+        view.animate().alpha(1f).setDuration(100);
     }
 
     private void hideView(View view) {

@@ -7,6 +7,7 @@ public class CustomScroller extends RecyclerView.OnScrollListener {
 
     private final Callback callback;
     private boolean loading;
+    private boolean more;
     private int page;
 
     public CustomScroller(Callback callback) {
@@ -16,16 +17,19 @@ public class CustomScroller extends RecyclerView.OnScrollListener {
 
     @Override
     public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-        if (isLoading() || recyclerView.getScrollState() == RecyclerView.SCROLL_STATE_IDLE) return;
+        if (isLoading() || recyclerView.getScrollState() == RecyclerView.SCROLL_STATE_IDLE || callback == null) return;
         if (!recyclerView.canScrollVertically(1) && dy > 0) callback.onLoadMore(String.valueOf(++page));
     }
 
     public void reset() {
+        more = false;
         page = 1;
     }
 
-    public void addPage() {
+    public boolean addPage() {
+        if (more) return false;
         page++;
+        return more = true;
     }
 
     public int getPage() {

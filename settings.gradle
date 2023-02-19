@@ -15,7 +15,11 @@ dependencyResolutionManagement {
     }
 }
 include ':app'
+include ':drpy'
+include ':zlive'
+include ':tvbus'
 include ':catvod'
-gradle.ext.exoplayerModulePrefix = 'exoplayer-'
-apply from: file("/exo/core_settings.gradle")
+include ':pyramid'
+include ':forcetech'
+include ':ijkplayer'
 rootProject.name = "TV"

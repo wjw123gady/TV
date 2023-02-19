@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.utils;
 
+import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
@@ -28,6 +29,14 @@ public class ResUtil {
         return getDisplayMetrics().heightPixels;
     }
 
+    public static boolean isLand() {
+        return App.get().getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
+    public static boolean isPort() {
+        return App.get().getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
+    }
+
     public static int getEms() {
         return Math.min(getScreenWidthPx() / sp2px(24), 35);
     }
@@ -40,6 +49,10 @@ public class ResUtil {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getDisplayMetrics());
     }
 
+    public static int getDrawable(String resId) {
+        return App.get().getResources().getIdentifier(resId, "drawable", App.get().getPackageName());
+    }
+
     public static String getString(@StringRes int resId) {
         return App.get().getString(resId);
     }
@@ -48,7 +61,7 @@ public class ResUtil {
         return App.get().getString(resId, formatArgs);
     }
 
-    public static CharSequence[] getStringArray(@ArrayRes int resId) {
+    public static String[] getStringArray(@ArrayRes int resId) {
         return App.get().getResources().getStringArray(resId);
     }
 

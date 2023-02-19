@@ -34,6 +34,10 @@ public class Server implements Nano.Listener {
         return "http://" + (local ? "127.0.0.1" : getIP()) + ":" + port;
     }
 
+    public String getAddress(String path) {
+        return getAddress(true) + "/" + path;
+    }
+
     public void start() {
         if (nano != null) return;
         do {
@@ -87,12 +91,17 @@ public class Server implements Nano.Listener {
     }
 
     @Override
-    public void onPush(String url) {
-        if (url.length() > 0) ServerEvent.push(url);
+    public void onUpdate(String text) {
+        if (text.length() > 0) ServerEvent.update(text);
     }
 
     @Override
-    public void onApi(String url) {
-        if (url.length() > 0) ServerEvent.api(url);
+    public void onPush(String text) {
+        if (text.length() > 0) ServerEvent.push(text);
+    }
+
+    @Override
+    public void onApi(String text) {
+        if (text.length() > 0) ServerEvent.api(text);
     }
 }

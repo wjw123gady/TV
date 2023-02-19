@@ -3,8 +3,8 @@ package com.fongmi.android.tv.ui.custom;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.http.SslError;
-import android.os.Handler;
-import android.os.Looper;
+import android.text.TextUtils;
+import android.webkit.CookieManager;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -15,9 +15,13 @@ import android.webkit.WebViewClient;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.api.ApiConfig;
-import com.fongmi.android.tv.player.ParseTask;
+import com.fongmi.android.tv.bean.Site;
+import com.fongmi.android.tv.impl.ParseCallback;
 import com.fongmi.android.tv.utils.Utils;
+import com.github.catvod.crawler.Spider;
 
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
@@ -27,12 +31,16 @@ import java.util.Map;
 
 public class CustomWebView extends WebView {
 
-    private ParseTask.Callback callback;
     private WebResourceResponse empty;
+    private ParseCallback callback;
     private List<String> keys;
-    private Handler handler;
-    private String ads;
-    private int retry;
+    private Runnable timer;
+    private String from;
+    private String key;
+
+    public static CustomWebView create(@NonNull Context context) {
+        return new CustomWebView(context);
+    }
 
     public CustomWebView(@NonNull Context context) {
         super(context);
@@ -41,10 +49,9 @@ public class CustomWebView extends WebView {
 
     @SuppressLint("SetJavaScriptEnabled")
     public void initSettings() {
-        this.ads = ApiConfig.get().getAds();
+        this.timer = () -> stop(true);
         this.keys = Arrays.asList("user-agent", "referer", "origin");
         this.empty = new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream("".getBytes()));
-        this.handler = new Handler(Looper.getMainLooper());
         getSettings().setUseWideViewPort(true);
         getSettings().setDatabaseEnabled(true);
         getSettings().setDomStorageEnabled(true);
@@ -55,11 +62,23 @@ public class CustomWebView extends WebView {
         setWebViewClient(webViewClient());
     }
 
-    public void start(String url, ParseTask.Callback callback) {
+    private void setUserAgent(Map<String, String> headers) {
+        for (String key : headers.keySet()) {
+            if (key.equalsIgnoreCase("user-agent")) {
+                getSettings().setUserAgentString(headers.get(key));
+                break;
+            }
+        }
+    }
+
+    public CustomWebView start(String key, String from, String url, Map<String, String> headers, ParseCallback callback) {
+        App.post(timer, Constant.TIMEOUT_PARSE_WEB);
         this.callback = callback;
-        stopLoading();
-        loadUrl(url);
-        retry = 0;
+        setUserAgent(headers);
+        loadUrl(url, headers);
+        this.from = from;
+        this.key = key;
+        return this;
     }
 
     private WebViewClient webViewClient() {
@@ -69,15 +88,14 @@ public class CustomWebView extends WebView {
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 String host = request.getUrl().getHost();
-                if (ads.contains(host)) return empty;
-                handler.removeCallbacks(mTimer);
-                handler.postDelayed(mTimer, 15 * 1000);
+                if (ApiConfig.get().getAds().contains(host)) return empty;
                 Map<String, String> headers = request.getRequestHeaders();
-                if (Utils.isVideoFormat(url) || headers.containsKey("Range")) post(headers, url);
+                if (isVideoFormat(url, headers)) post(headers, url);
                 return super.shouldInterceptRequest(view, request);
             }
 
             @Override
+            @SuppressLint("WebViewClientOnReceivedSslError")
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
                 handler.proceed();
             }
@@ -89,29 +107,41 @@ public class CustomWebView extends WebView {
         };
     }
 
-    private final Runnable mTimer = new Runnable() {
-        @Override
-        public void run() {
-            if (retry > 3) return;
-            if (retry++ == 3) stop(true);
-            else reload();
+    private boolean isVideoFormat(String url, Map<String, String> headers) {
+        try {
+            Site site = ApiConfig.get().getSite(key);
+            Spider spider = ApiConfig.get().getCSP(site);
+            if (spider.manualVideoCheck()) return spider.isVideoFormat(url);
+            return Utils.isVideoFormat(url, headers);
+        } catch (Exception ignored) {
+            return Utils.isVideoFormat(url, headers);
         }
-    };
+    }
 
     private void post(Map<String, String> headers, String url) {
         Map<String, String> news = new HashMap<>();
+        String cookie = CookieManager.getInstance().getCookie(url);
+        if (!TextUtils.isEmpty(cookie)) news.put("cookie", cookie);
         for (String key : headers.keySet()) if (keys.contains(key.toLowerCase())) news.put(key, headers.get(key));
-        handler.removeCallbacks(mTimer);
-        handler.post(() -> {
-            callback.onParseSuccess(news, url, "");
-            stop(false);
-        });
+        onParseSuccess(news, url);
     }
 
     public void stop(boolean error) {
         stopLoading();
         loadUrl("about:blank");
-        handler.removeCallbacks(mTimer);
-        if (error) handler.post(() -> callback.onParseError());
+        App.removeCallbacks(timer);
+        if (error) onParseError();
+        else callback = null;
+    }
+
+    private void onParseSuccess(Map<String, String> news, String url) {
+        if (callback != null) callback.onParseSuccess(news, url, from);
+        App.post(() -> stop(false));
+        callback = null;
+    }
+
+    private void onParseError() {
+        if (callback != null) callback.onParseError();
+        callback = null;
     }
 }

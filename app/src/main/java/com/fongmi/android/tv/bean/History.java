@@ -5,6 +5,7 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.db.AppDatabase;
 
 import java.util.List;
@@ -25,10 +26,17 @@ public class History {
     private long createTime;
     private long opening;
     private long ending;
+    private long position;
     private long duration;
+    private float speed;
+    private int player;
+    private int scale;
     private int cid;
 
     public History() {
+        this.speed = 1;
+        this.scale = -1;
+        this.player = -1;
     }
 
     @NonNull
@@ -120,12 +128,44 @@ public class History {
         this.ending = ending;
     }
 
+    public long getPosition() {
+        return position;
+    }
+
+    public void setPosition(long position) {
+        this.position = position;
+    }
+
     public long getDuration() {
         return duration;
     }
 
     public void setDuration(long duration) {
         this.duration = duration;
+    }
+
+    public float getSpeed() {
+        return speed;
+    }
+
+    public void setSpeed(float speed) {
+        this.speed = speed;
+    }
+
+    public int getPlayer() {
+        return player;
+    }
+
+    public void setPlayer(int player) {
+        this.player = player;
+    }
+
+    public int getScale() {
+        return scale;
+    }
+
+    public void setScale(int scale) {
+        this.scale = scale;
     }
 
     public int getCid() {
@@ -160,30 +200,57 @@ public class History {
         return isRevPlay() ? R.string.play_backward_hint : R.string.play_forward_hint;
     }
 
+    public static List<History> get() {
+        return AppDatabase.get().getHistoryDao().find(ApiConfig.getCid());
+    }
+
     public static History find(String key) {
-        return AppDatabase.get().getHistoryDao().find(key);
+        return AppDatabase.get().getHistoryDao().find(ApiConfig.getCid(), key);
     }
 
-    public static List<History> find(int cid) {
-        return AppDatabase.get().getHistoryDao().find(cid);
+    public static void delete(int cid) {
+        AppDatabase.get().getHistoryDao().delete(cid);
     }
 
-    public static void delete(int id) {
-        AppDatabase.get().getHistoryDao().delete(id);
+    private void checkOpEd(History item) {
+        if (getOpening() == 0) setOpening(item.getOpening());
+        if (getEnding() == 0) setEnding(item.getEnding());
     }
 
-    public History save() {
+    private void checkMerge(List<History> items) {
+        for (History item : items) {
+            if (getKey().equals(item.getKey()) || Math.abs(item.getDuration() - getDuration()) > 10 * 60 * 1000) continue;
+            checkOpEd(item);
+            item.delete();
+        }
+    }
+
+    public void update(long position, long duration) {
+        setPosition(position);
+        setDuration(duration);
+        checkMerge(AppDatabase.get().getHistoryDao().findByName(ApiConfig.getCid(), getVodName()));
         AppDatabase.get().getHistoryDao().insertOrUpdate(this);
-        return this;
-    }
-
-    public History update() {
-        AppDatabase.get().getHistoryDao().update(this);
-        return this;
     }
 
     public History delete() {
-        AppDatabase.get().getHistoryDao().delete(getKey());
+        AppDatabase.get().getHistoryDao().delete(ApiConfig.getCid(), getKey());
         return this;
+    }
+
+    public void findEpisode(List<Vod.Flag> flags) {
+        setVodFlag(flags.get(0).getFlag());
+        setVodRemarks(flags.get(0).getEpisodes().get(0).getName());
+        for (History item : AppDatabase.get().getHistoryDao().findByName(ApiConfig.getCid(), getVodName())) {
+            if (getPosition() > 0) break;
+            for (Vod.Flag flag : flags) {
+                Vod.Flag.Episode episode = flag.find(item.getVodRemarks());
+                if (episode == null) continue;
+                setVodFlag(flag.getFlag());
+                setPosition(item.getPosition());
+                setVodRemarks(episode.getName());
+                checkOpEd(item);
+                break;
+            }
+        }
     }
 }

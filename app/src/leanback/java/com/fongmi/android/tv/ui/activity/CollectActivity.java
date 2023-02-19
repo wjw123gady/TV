@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewpager.widget.ViewPager;
 
+import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.bean.Collect;
@@ -43,15 +44,19 @@ public class CollectActivity extends BaseActivity {
     private List<Site> mSites;
     private View mOldView;
 
-    private String getKeyword() {
-        return getIntent().getStringExtra("keyword");
+    public static void start(Activity activity, String keyword) {
+        start(activity, keyword, false);
     }
 
-    public static void start(Activity activity, String keyword) {
+    public static void start(Activity activity, String keyword, boolean clear) {
         Intent intent = new Intent(activity, CollectActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        if (clear) intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra("keyword", keyword);
-        activity.startActivity(intent);
+        activity.startActivityForResult(intent, 1000);
+    }
+
+    private String getKeyword() {
+        return getIntent().getStringExtra("keyword");
     }
 
     @Override
@@ -61,7 +66,6 @@ public class CollectActivity extends BaseActivity {
 
     @Override
     protected void initView() {
-        mExecutor = Executors.newFixedThreadPool(5);
         setRecyclerView();
         setViewModel();
         setPager();
@@ -81,10 +85,7 @@ public class CollectActivity extends BaseActivity {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
                 mBinding.pager.setCurrentItem(position);
-                if (mOldView != null) mOldView.setActivated(false);
-                if (child == null) return;
-                mOldView = child.itemView;
-                mOldView.setActivated(true);
+                onChildSelected(child);
             }
         });
     }
@@ -97,8 +98,7 @@ public class CollectActivity extends BaseActivity {
 
     private void setViewModel() {
         mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
-        mViewModel.result.observe(this, result -> {
-            if (mExecutor == null) return;
+        mViewModel.search.observe(this, result -> {
             mAdapter.add(Collect.create(result.getList()));
             getFragment().addVideo(result.getList());
             mPageAdapter.notifyDataSetChanged();
@@ -121,12 +121,35 @@ public class CollectActivity extends BaseActivity {
     private void search() {
         mAdapter.add(Collect.all());
         mPageAdapter.notifyDataSetChanged();
+        mExecutor = Executors.newFixedThreadPool(Constant.THREAD_POOL);
         mBinding.result.setText(getString(R.string.collect_result, getKeyword()));
-        for (Site site : mSites) mExecutor.execute(() -> mViewModel.searchContent(site, getKeyword()));
+        for (Site site : mSites) mExecutor.execute(() -> search(site));
+    }
+
+    private void search(Site site) {
+        try {
+            mViewModel.searchContent(site, getKeyword());
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void onChildSelected(@Nullable RecyclerView.ViewHolder child) {
+        if (mOldView != null) mOldView.setActivated(false);
+        if (child == null) return;
+        mOldView = child.itemView;
+        mOldView.setActivated(true);
     }
 
     private CollectFragment getFragment() {
         return (CollectFragment) mPageAdapter.instantiateItem(mBinding.pager, 0);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK) return;
+        setResult(RESULT_OK);
+        finish();
     }
 
     @Override
