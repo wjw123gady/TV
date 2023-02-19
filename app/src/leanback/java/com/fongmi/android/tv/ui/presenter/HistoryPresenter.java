@@ -12,15 +12,17 @@ import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.bean.History;
 import com.fongmi.android.tv.databinding.AdapterVodBinding;
 import com.fongmi.android.tv.utils.ImgUtil;
+import com.fongmi.android.tv.utils.Prefers;
 import com.fongmi.android.tv.utils.ResUtil;
 
 public class HistoryPresenter extends Presenter {
 
-    private OnClickListener mListener;
+    private final OnClickListener mListener;
     private int width, height;
     private boolean delete;
 
-    public HistoryPresenter() {
+    public HistoryPresenter(OnClickListener listener) {
+        this.mListener = listener;
         setLayoutSize();
     }
 
@@ -33,10 +35,6 @@ public class HistoryPresenter extends Presenter {
         boolean onLongClick();
     }
 
-    public void setOnClickListener(OnClickListener listener) {
-        this.mListener = listener;
-    }
-
     public boolean isDelete() {
         return delete;
     }
@@ -46,9 +44,9 @@ public class HistoryPresenter extends Presenter {
     }
 
     private void setLayoutSize() {
-        int space = ResUtil.dp2px(112);
+        int space = ResUtil.dp2px(48) + ResUtil.dp2px(16 * (Prefers.getColumn() - 1));
         int base = ResUtil.getScreenWidthPx() - space;
-        width = base / 5;
+        width = base / Prefers.getColumn();
         height = (int) (width / 0.75f);
     }
 
@@ -64,14 +62,14 @@ public class HistoryPresenter extends Presenter {
     public void onBindViewHolder(Presenter.ViewHolder viewHolder, Object object) {
         History item = (History) object;
         ViewHolder holder = (ViewHolder) viewHolder;
+        setClickListener(holder.view, item);
         holder.binding.name.setText(item.getVodName());
+        holder.binding.site.setVisibility(View.VISIBLE);
         holder.binding.site.setText(ApiConfig.getSiteName(item.getSiteKey()));
         holder.binding.remark.setText(ResUtil.getString(R.string.vod_last, item.getVodRemarks()));
-        holder.binding.site.setVisibility(delete ? View.GONE : View.VISIBLE);
         holder.binding.remark.setVisibility(delete ? View.GONE : View.VISIBLE);
         holder.binding.delete.setVisibility(!delete ? View.GONE : View.VISIBLE);
-        ImgUtil.load(item.getVodPic(), holder.binding.image);
-        setClickListener(holder.view, item);
+        ImgUtil.loadHistory(item.getVodPic(), holder.binding.image);
     }
 
     private void setClickListener(View root, History item) {

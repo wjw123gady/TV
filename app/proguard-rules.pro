@@ -22,9 +22,32 @@
 -keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.Path <fields>; }
 -keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.ElementList <fields>; }
 
-# CatVod
--keep class com.github.catvod.crawler.** { *; }
-
 # OkHttp
 -dontwarn okhttp3.**
 -keep class okhttp3.** { *; }
+
+# Cronet
+-keep class org.chromium.net.**{*;}
+-keep class com.google.net.cronet.**{*;}
+
+# CatVod
+-keep class com.github.catvod.crawler.** { *; }
+-keep class * extends com.github.catvod.crawler.Spider
+
+# IJK
+-keep class tv.danmaku.ijk.media.player.** { *; }
+-keep class tv.danmaku.ijk.media.player.IjkMediaPlayer { *; }
+-keep class tv.danmaku.ijk.media.player.ffmpeg.FFmpegApi { *; }
+
+# TVBus
+-keep class com.tvbus.engine.** { *; }
+
+# ZLive
+-keep class com.sun.jna.** { *; }
+-keep class com.east.android.zlive.** { *; }
+
+# Zxing
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}

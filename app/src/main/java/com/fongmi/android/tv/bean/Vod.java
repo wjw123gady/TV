@@ -5,10 +5,10 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 
-import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.Utils;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
+import com.google.gson.reflect.TypeToken;
 
 import org.simpleframework.xml.Attribute;
 import org.simpleframework.xml.Element;
@@ -17,8 +17,11 @@ import org.simpleframework.xml.Path;
 import org.simpleframework.xml.Root;
 import org.simpleframework.xml.Text;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 @Root(strict = false)
 public class Vod {
@@ -69,11 +72,20 @@ public class Vod {
     @SerializedName("vod_play_url")
     private String vodPlayUrl;
 
+    @SerializedName("vod_tag")
+    private String vodTag;
+
     @Path("dl")
     @ElementList(entry = "dd", required = false, inline = true)
     private List<Flag> vodFlags;
 
     private Site site;
+
+    public static List<Vod> arrayFrom(String str) {
+        Type listType = new TypeToken<List<Vod>>() {}.getType();
+        List<Vod> items = new Gson().fromJson(str, listType);
+        return items == null ? Collections.emptyList() : items;
+    }
 
     public String getVodId() {
         return TextUtils.isEmpty(vodId) ? "" : vodId;
@@ -123,6 +135,10 @@ public class Vod {
         return TextUtils.isEmpty(vodPlayUrl) ? "" : vodPlayUrl;
     }
 
+    public String getVodTag() {
+        return TextUtils.isEmpty(vodTag) ? "" : vodTag;
+    }
+
     public List<Flag> getVodFlags() {
         return vodFlags = vodFlags == null ? new ArrayList<>() : vodFlags;
     }
@@ -139,16 +155,28 @@ public class Vod {
         return getSite() == null ? "" : getSite().getName();
     }
 
+    public String getSiteKey() {
+        return getSite() == null ? "" : getSite().getKey();
+    }
+
     public int getSiteVisible() {
         return getSite() == null ? View.GONE : View.VISIBLE;
     }
 
     public int getYearVisible() {
-        return getVodYear().isEmpty() ? View.GONE : View.VISIBLE;
+        return getSite() != null || getVodYear().length() < 4 ? View.GONE : View.VISIBLE;
     }
 
     public int getRemarkVisible() {
         return getVodRemarks().isEmpty() ? View.GONE : View.VISIBLE;
+    }
+
+    public boolean isFolder() {
+        return getVodTag().equals("folder");
+    }
+
+    public boolean shouldSearch() {
+        return getVodId().isEmpty() || getVodId().startsWith("msearch:");
     }
 
     public void setVodFlags() {
@@ -180,16 +208,12 @@ public class Vod {
 
         private boolean activated;
 
-        public static Flag objectFrom(String str) {
-            return new Gson().fromJson(str, Flag.class);
-        }
-
         public Flag() {
             this.episodes = new ArrayList<>();
         }
 
         public Flag(String flag) {
-            this();
+            this.episodes = new ArrayList<>();
             this.flag = flag;
         }
 
@@ -205,26 +229,38 @@ public class Vod {
             return episodes;
         }
 
-        public void createEpisode(String data) {
-            String[] urls = data.contains("#") ? data.split("#") : new String[]{data};
-            for (String url : urls) {
-                String[] split = url.split("\\$");
-                Episode episode = split.length >= 2 ? new Vod.Flag.Episode(split[0], split[1]) : new Vod.Flag.Episode(ResUtil.getString(R.string.play), url);
-                if (!getEpisodes().contains(episode)) getEpisodes().add(episode);
-            }
-        }
-
         public boolean isActivated() {
             return activated;
         }
 
-        public void setActivated(boolean activated) {
-            this.activated = activated;
+        public void setActivated(Flag item) {
+            this.activated = item.equals(this);
+            if (activated) item.episodes = episodes;
+        }
+
+        public void createEpisode(String data) {
+            String[] urls = data.contains("#") ? data.split("#") : new String[]{data};
+            for (int i = 0; i < urls.length; i++) {
+                String[] split = urls[i].split("\\$");
+                String number = String.format(Locale.getDefault(), "%02d", i + 1);
+                Episode episode = split.length > 1 ? new Vod.Flag.Episode(split[0].isEmpty() ? number : split[0], split[1]) : new Vod.Flag.Episode(number, urls[i]);
+                if (!getEpisodes().contains(episode)) getEpisodes().add(episode);
+            }
         }
 
         public void toggle(boolean activated, Episode episode) {
             if (activated) for (Episode item : getEpisodes()) item.setActivated(episode);
             else for (Episode item : getEpisodes()) item.deactivated();
+        }
+
+        public Episode find(String remarks) {
+            int number = Utils.getDigit(remarks);
+            if (getEpisodes().size() == 1) return getEpisodes().get(0);
+            for (Vod.Flag.Episode item : getEpisodes()) if (item.rule1(remarks)) return item;
+            for (Vod.Flag.Episode item : getEpisodes()) if (item.rule2(number)) return item;
+            for (Vod.Flag.Episode item : getEpisodes()) if (item.rule3(remarks)) return item;
+            for (Vod.Flag.Episode item : getEpisodes()) if (item.rule4(remarks)) return item;
+            return null;
         }
 
         @Override
@@ -248,11 +284,14 @@ public class Vod {
             @SerializedName("url")
             private final String url;
 
+            private final int number;
+
             private boolean activated;
 
             public Episode(String name, String url) {
                 this.name = name;
                 this.url = url;
+                this.number = Utils.getDigit(name);
             }
 
             public String getName() {
@@ -263,16 +302,36 @@ public class Vod {
                 return url;
             }
 
+            public int getNumber() {
+                return number;
+            }
+
             public boolean isActivated() {
                 return activated;
             }
 
-            private void deactivated() {
+            public void deactivated() {
                 this.activated = false;
             }
 
             private void setActivated(Episode item) {
                 this.activated = item.equals(this);
+            }
+
+            public boolean rule1(String name) {
+                return getName().equalsIgnoreCase(name);
+            }
+
+            public boolean rule2(int number) {
+                return getNumber() == number && number != -1;
+            }
+
+            public boolean rule3(String name) {
+                return getName().toLowerCase().contains(name.toLowerCase());
+            }
+
+            public boolean rule4(String name) {
+                return name.toLowerCase().contains(getName().toLowerCase());
             }
 
             @Override

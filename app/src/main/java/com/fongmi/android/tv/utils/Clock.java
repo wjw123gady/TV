@@ -1,8 +1,8 @@
 package com.fongmi.android.tv.utils;
 
-import android.os.Handler;
-import android.os.Looper;
 import android.widget.TextView;
+
+import com.fongmi.android.tv.App;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -13,8 +13,9 @@ import java.util.TimerTask;
 public class Clock {
 
     private SimpleDateFormat formatter;
-    private Handler handler;
+    private Callback callback;
     private Timer timer;
+    private Date date;
 
     private static class Loader {
         static volatile Clock INSTANCE = new Clock();
@@ -24,14 +25,22 @@ public class Clock {
         return Loader.INSTANCE;
     }
 
-    public void init() {
-        this.formatter = new SimpleDateFormat("MM/dd HH:mm:ss", Locale.getDefault());
-        this.handler = new Handler(Looper.getMainLooper());
+    public void init(String format) {
+        this.formatter = new SimpleDateFormat(format, Locale.getDefault());
+        this.date = new Date();
     }
 
     public static void start(TextView view) {
-        get().init();
+        start(view, "HH:mm:ss");
+    }
+
+    public static void start(TextView view, String format) {
+        get().init(format);
         get().run(view);
+    }
+
+    public void setCallback(Callback callback) {
+        this.callback = callback;
     }
 
     private void run(TextView view) {
@@ -39,16 +48,26 @@ public class Clock {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (handler == null || view == null || formatter == null) return;
-                handler.post(() -> view.setText(formatter.format(new Date())));
+                App.post(() -> doJob(view));
             }
         }, 0, 1000);
     }
 
+    private void doJob(TextView view) {
+        try {
+            date.setTime(System.currentTimeMillis());
+            view.setText(formatter.format(date));
+            if (callback != null) callback.onTimeChanged();
+        } catch (Exception ignored) {
+        }
+    }
+
     public void release() {
         if (timer != null) timer.cancel();
-        formatter = null;
-        handler = null;
-        timer = null;
+    }
+
+    public interface Callback {
+
+        void onTimeChanged();
     }
 }

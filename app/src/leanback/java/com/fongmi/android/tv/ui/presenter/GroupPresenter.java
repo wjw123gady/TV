@@ -6,9 +6,8 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.leanback.widget.Presenter;
 
-import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.bean.Group;
 import com.fongmi.android.tv.databinding.AdapterGroupBinding;
-import com.fongmi.android.tv.utils.ResUtil;
 
 public class GroupPresenter extends Presenter {
 
@@ -19,7 +18,7 @@ public class GroupPresenter extends Presenter {
     }
 
     public interface OnClickListener {
-        void onItemClick();
+        void onItemClick(Group item);
     }
 
     @Override
@@ -29,11 +28,11 @@ public class GroupPresenter extends Presenter {
 
     @Override
     public void onBindViewHolder(Presenter.ViewHolder viewHolder, Object object) {
+        Group item = (Group) object;
         ViewHolder holder = (ViewHolder) viewHolder;
-        String text = object.toString();
-        holder.binding.text.setText(text);
-        boolean reverse = text.equals(ResUtil.getString(R.string.detail_reverse));
-        if (reverse) setOnClickListener(holder, view -> mListener.onItemClick());
+        item.loadLogo(holder.binding.logo);
+        holder.binding.name.setText(item.getName());
+        setOnClickListener(holder, view -> mListener.onItemClick(item));
     }
 
     @Override

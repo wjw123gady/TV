@@ -21,13 +21,11 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
 
     private final OnClickListener mListener;
     private final List<History> mItems;
-    private int width, height;
     private boolean delete;
 
     public HistoryAdapter(OnClickListener listener) {
         this.mListener = listener;
         this.mItems = new ArrayList<>();
-        setLayoutSize(3);
     }
 
     public interface OnClickListener {
@@ -47,34 +45,20 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
         this.delete = delete;
     }
 
-    private void setLayoutSize(int spanCount) {
-        int space = ResUtil.dp2px(32 + ((spanCount - 1) * 16));
-        int base = ResUtil.getScreenWidthPx() - space;
-        width = base / spanCount;
-        height = (int) (width / 0.75f);
+    public void remove(History item) {
+        int position = mItems.indexOf(item);
+        if (position == -1) return;
+        mItems.remove(position);
+        notifyItemRemoved(position);
     }
 
-    class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
+    static class ViewHolder extends RecyclerView.ViewHolder {
 
         private final AdapterVodBinding binding;
 
         ViewHolder(@NonNull AdapterVodBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
-            binding.getRoot().setOnClickListener(this);
-            binding.getRoot().setOnLongClickListener(this);
-        }
-
-        @Override
-        public void onClick(View view) {
-            History item = mItems.get(getLayoutPosition());
-            if (isDelete()) mListener.onItemDelete(item);
-            else mListener.onItemClick(item);
-        }
-
-        @Override
-        public boolean onLongClick(View v) {
-            return mListener.onLongClick();
         }
     }
 
@@ -92,22 +76,27 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        ViewHolder holder = new ViewHolder(AdapterVodBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false));
-        holder.binding.getRoot().getLayoutParams().width = width;
-        holder.binding.getRoot().getLayoutParams().height = height;
-        return holder;
+        return new ViewHolder(AdapterVodBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false));
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         History item = mItems.get(position);
         holder.binding.name.setText(item.getVodName());
+        holder.binding.site.setVisibility(View.VISIBLE);
         holder.binding.site.setText(ApiConfig.getSiteName(item.getSiteKey()));
         holder.binding.remark.setText(ResUtil.getString(R.string.vod_last, item.getVodRemarks()));
-        holder.binding.name.setVisibility(delete ? View.GONE : View.VISIBLE);
-        holder.binding.site.setVisibility(delete ? View.GONE : View.VISIBLE);
         holder.binding.remark.setVisibility(delete ? View.GONE : View.VISIBLE);
         holder.binding.delete.setVisibility(!delete ? View.GONE : View.VISIBLE);
-        ImgUtil.load(item.getVodPic(), holder.binding.image);
+        ImgUtil.loadHistory(item.getVodPic(), holder.binding.image);
+        setClickListener(holder.binding.getRoot(), item);
+    }
+
+    private void setClickListener(View root, History item) {
+        root.setOnLongClickListener(view -> mListener.onLongClick());
+        root.setOnClickListener(v -> {
+            if (isDelete()) mListener.onItemDelete(item);
+            else mListener.onItemClick(item);
+        });
     }
 }

@@ -4,16 +4,11 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 
+import com.fongmi.android.tv.gson.FilterAdapter;
 import com.fongmi.android.tv.utils.Json;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
 import com.google.gson.annotations.SerializedName;
-import com.google.gson.reflect.TypeToken;
 
 import org.json.JSONObject;
 import org.simpleframework.xml.ElementList;
@@ -21,8 +16,6 @@ import org.simpleframework.xml.Path;
 import org.simpleframework.xml.Root;
 import org.simpleframework.xml.core.Persister;
 
-import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -58,15 +51,17 @@ public class Result {
     private String flag;
     @SerializedName("url")
     private String url;
+    @SerializedName("key")
+    private String key;
+    @SerializedName("subs")
+    private List<Sub> subs;
 
     public static Result fromJson(String str) {
         try {
-            Type type = new TypeToken<LinkedHashMap<String, List<Filter>>>() {}.getType();
-            Gson gson = new GsonBuilder().registerTypeAdapter(type, new FiltersAdapter()).create();
-            Result result = gson.fromJson(str, Result.class);
-            return result == null ? new Result() : result;
+            Result result = FilterAdapter.gson().fromJson(str, Result.class);
+            return result == null ? empty() : result;
         } catch (Exception e) {
-            return new Result();
+            return empty();
         }
     }
 
@@ -74,20 +69,34 @@ public class Result {
         try {
             return new Persister().read(Result.class, str);
         } catch (Exception e) {
-            return new Result();
+            return empty();
         }
     }
 
     public static Result fromObject(JSONObject object) {
-        return objectFrom(object.toString());
+        return object == null ? empty() : objectFrom(object.toString());
     }
 
     public static Result objectFrom(String str) {
         try {
             return new Gson().fromJson(str, Result.class);
         } catch (Exception e) {
-            return new Result();
+            return empty();
         }
+    }
+
+    public static Result empty() {
+        return new Result();
+    }
+
+    public static Result folder(Vod item) {
+        Result result = new Result();
+        Class type = new Class();
+        type.setTypeFlag("1");
+        type.setTypeId(item.getVodId());
+        type.setTypeName(item.getVodName());
+        result.setTypes(List.of(type));
+        return result;
     }
 
     public List<Class> getTypes() {
@@ -95,7 +104,7 @@ public class Result {
     }
 
     public void setTypes(List<Class> types) {
-        this.types = types;
+        if (types.size() > 0) this.types = types;
     }
 
     public List<Vod> getList() {
@@ -110,7 +119,7 @@ public class Result {
         return filters == null ? new LinkedHashMap<>() : filters;
     }
 
-    private JsonElement getHeader() {
+    public JsonElement getHeader() {
         return header;
     }
 
@@ -126,6 +135,10 @@ public class Result {
         return TextUtils.isEmpty(jxFrom) ? "" : jxFrom;
     }
 
+    public Integer getParse() {
+        return getParse(0);
+    }
+
     public Integer getParse(Integer def) {
         return parse == null ? def : parse;
     }
@@ -136,6 +149,10 @@ public class Result {
 
     public Integer getJx() {
         return jx == null ? 0 : jx;
+    }
+
+    public void setJx(Integer jx) {
+        this.jx = jx;
     }
 
     public String getFlag() {
@@ -154,31 +171,30 @@ public class Result {
         this.url = url;
     }
 
+    public String getKey() {
+        return TextUtils.isEmpty(key) ? "" : key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public List<Sub> getSubs() {
+        return subs == null ? Collections.emptyList() : subs;
+    }
+
     public Map<String, String> getHeaders() {
         return Json.toMap(getHeader());
+    }
+
+    public Result clear() {
+        getList().clear();
+        return this;
     }
 
     @NonNull
     @Override
     public String toString() {
         return new Gson().toJson(this);
-    }
-
-    static class FiltersAdapter implements JsonDeserializer<LinkedHashMap<String, List<Filter>>> {
-
-        @Override
-        public LinkedHashMap<String, List<Filter>> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-            LinkedHashMap<String, List<Filter>> filterMap = new LinkedHashMap<>();
-            JsonObject filters = json.getAsJsonObject();
-            if (filters == null) return filterMap;
-            for (String key : filters.keySet()) {
-                List<Filter> items = new ArrayList<>();
-                JsonElement element = filters.get(key);
-                if (element.isJsonObject()) items.add(Filter.objectFrom(element));
-                else for (JsonElement item : element.getAsJsonArray()) items.add(Filter.objectFrom(item));
-                filterMap.put(key, items);
-            }
-            return filterMap;
-        }
     }
 }
