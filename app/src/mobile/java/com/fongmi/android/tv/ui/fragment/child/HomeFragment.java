@@ -1,6 +1,5 @@
 package com.fongmi.android.tv.ui.fragment.child;
 
-import android.content.res.Configuration;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
@@ -9,6 +8,8 @@ import androidx.annotation.Nullable;
 import androidx.core.widget.NestedScrollView;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.App;
@@ -21,15 +22,14 @@ import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.FragmentHomeBinding;
 import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.ui.activity.BaseFragment;
+import com.fongmi.android.tv.ui.activity.CollectActivity;
 import com.fongmi.android.tv.ui.activity.DetailActivity;
 import com.fongmi.android.tv.ui.adapter.HistoryAdapter;
 import com.fongmi.android.tv.ui.adapter.VodAdapter;
 import com.fongmi.android.tv.ui.fragment.VodFragment;
 
-public class HomeFragment extends BaseFragment implements VodAdapter.OnClickListener, HistoryAdapter.OnClickListener {
+public class HomeFragment extends BaseFragment implements VodAdapter.OnClickListener, HistoryAdapter.OnClickListener, SwipeRefreshLayout.OnRefreshListener {
 
-    private GridLayoutManager mRecommendManager;
-    private GridLayoutManager mHistoryManager;
     private HistoryAdapter mHistoryAdapter;
     private FragmentHomeBinding mBinding;
     private SiteViewModel mViewModel;
@@ -62,17 +62,20 @@ public class HomeFragment extends BaseFragment implements VodAdapter.OnClickList
 
     @Override
     protected void initEvent() {
-        mBinding.getRoot().setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> getParent().toggleLink(scrollY - oldScrollY));
+        mBinding.swipeLayout.setOnRefreshListener(this);
+        mBinding.scrollView.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> getParent().toggleLink(scrollY - oldScrollY));
     }
 
     private void setRecyclerView() {
         mBinding.history.setHasFixedSize(true);
         mBinding.history.getItemAnimator().setChangeDuration(0);
-        mBinding.history.setLayoutManager(mHistoryManager = new GridLayoutManager(getContext(), Product.getColumn(getActivity())));
+        mBinding.history.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
         mBinding.history.setAdapter(mHistoryAdapter = new HistoryAdapter(this));
         mBinding.recommend.setHasFixedSize(true);
-        mBinding.recommend.setLayoutManager(mRecommendManager = new GridLayoutManager(getContext(), Product.getColumn(getActivity())));
+        mBinding.recommend.setLayoutManager(new GridLayoutManager(getContext(), Product.getColumn()));
         mBinding.recommend.setAdapter(mVodAdapter = new VodAdapter(this));
+        mHistoryAdapter.setSize(Product.getSpec(getActivity()));
+        mVodAdapter.setSize(Product.getSpec(getActivity()));
     }
 
     private void setViewModel() {
@@ -89,6 +92,7 @@ public class HomeFragment extends BaseFragment implements VodAdapter.OnClickList
     }
 
     private void setAdapter(Result result) {
+        mBinding.swipeLayout.setRefreshing(false);
         mBinding.progressLayout.showContent();
         mVodAdapter.addAll(result.getList());
         getParent().setAdapter(result);
@@ -99,10 +103,10 @@ public class HomeFragment extends BaseFragment implements VodAdapter.OnClickList
         mHistoryAdapter.notifyItemRangeChanged(0, mHistoryAdapter.getItemCount());
     }
 
-    public boolean canBack() {
-        if (!mHistoryAdapter.isDelete()) return true;
-        setHistoryDelete(false);
-        return false;
+    @Override
+    public void onRefresh() {
+        mVodAdapter.clear();
+        getVideo();
     }
 
     @Override
@@ -113,7 +117,7 @@ public class HomeFragment extends BaseFragment implements VodAdapter.OnClickList
 
     @Override
     public boolean onLongClick(Vod item) {
-        //CollectActivity.start(this, item.getVodName());
+        CollectActivity.start(getActivity(), item.getVodName());
         return true;
     }
 
@@ -136,15 +140,15 @@ public class HomeFragment extends BaseFragment implements VodAdapter.OnClickList
     }
 
     @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        mHistoryManager.setSpanCount(Product.getColumn(getActivity()));
-        mRecommendManager.setSpanCount(Product.getColumn(getActivity()));
-    }
-
-    @Override
     public void onResume() {
         super.onResume();
         getHistory();
+    }
+
+    @Override
+    public boolean canBack() {
+        if (!mHistoryAdapter.isDelete()) return true;
+        setHistoryDelete(false);
+        return false;
     }
 }

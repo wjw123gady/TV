@@ -17,6 +17,7 @@ public class VodAdapter extends RecyclerView.Adapter<VodAdapter.ViewHolder> {
 
     private final OnClickListener mListener;
     private final List<Vod> mItems;
+    private int width, height;
 
     public VodAdapter(OnClickListener listener) {
         this.mListener = listener;
@@ -28,6 +29,15 @@ public class VodAdapter extends RecyclerView.Adapter<VodAdapter.ViewHolder> {
         void onItemClick(Vod item);
 
         boolean onLongClick(Vod item);
+    }
+
+    public void setSize(int[] size) {
+        this.width = size[0];
+        this.height = size[1];
+    }
+
+    public int getWidth() {
+        return width;
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
@@ -58,7 +68,10 @@ public class VodAdapter extends RecyclerView.Adapter<VodAdapter.ViewHolder> {
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new ViewHolder(AdapterVodBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false));
+        ViewHolder holder = new ViewHolder(AdapterVodBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false));
+        holder.binding.getRoot().getLayoutParams().width = width;
+        holder.binding.getRoot().getLayoutParams().height = height;
+        return holder;
     }
 
     @Override

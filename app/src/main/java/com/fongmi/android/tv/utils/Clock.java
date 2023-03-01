@@ -28,6 +28,15 @@ public class Clock {
     public void init(String format) {
         this.formatter = new SimpleDateFormat(format, Locale.getDefault());
         this.date = new Date();
+        this.callback = null;
+    }
+
+    public static void stop() {
+        get().release();
+    }
+
+    public static void start() {
+        start(null);
     }
 
     public static void start(TextView view) {
@@ -56,14 +65,15 @@ public class Clock {
     private void doJob(TextView view) {
         try {
             date.setTime(System.currentTimeMillis());
-            view.setText(formatter.format(date));
             if (callback != null) callback.onTimeChanged();
+            if (view != null) view.setText(formatter.format(date));
         } catch (Exception ignored) {
         }
     }
 
     public void release() {
         if (timer != null) timer.cancel();
+        if (callback != null) callback = null;
     }
 
     public interface Callback {

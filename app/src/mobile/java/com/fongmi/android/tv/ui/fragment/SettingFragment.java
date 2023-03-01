@@ -54,6 +54,7 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
         mBinding.liveUrl.setText(LiveConfig.getUrl());
         mBinding.wallUrl.setText(WallConfig.getUrl());
         mBinding.versionText.setText(BuildConfig.VERSION_NAME);
+        mBinding.sizeText.setText(ResUtil.getStringArray(R.array.select_size)[Prefers.getSize()]);
         mBinding.scaleText.setText(ResUtil.getStringArray(R.array.select_scale)[Prefers.getScale()]);
         mBinding.playerText.setText(ResUtil.getStringArray(R.array.select_player)[Prefers.getPlayer()]);
         mBinding.decodeText.setText(ResUtil.getStringArray(R.array.select_decode)[Prefers.getDecode()]);
@@ -69,17 +70,15 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
         mBinding.wall.setOnClickListener(view -> ConfigDialog.create(this).type(2).show());
         mBinding.vodHistory.setOnClickListener(view -> HistoryDialog.create(this).type(0).show());
         mBinding.liveHistory.setOnClickListener(view -> HistoryDialog.create(this).type(1).show());
-        mBinding.version.setOnClickListener(view -> Updater.get().force().start());
         mBinding.wallDefault.setOnClickListener(view -> setWallDefault());
         mBinding.wallRefresh.setOnClickListener(view -> setWallRefresh());
+        mBinding.version.setOnLongClickListener(view -> onVersion(true));
+        mBinding.version.setOnClickListener(view -> onVersion(false));
         mBinding.player.setOnClickListener(view -> setPlayer());
         mBinding.decode.setOnClickListener(view -> setDecode());
         mBinding.render.setOnClickListener(view -> setRender());
         mBinding.scale.setOnClickListener(view -> setScale());
-        mBinding.version.setOnLongClickListener(v -> {
-            Updater.get().force().branch("dev").start();
-            return true;
-        });
+        mBinding.size.setOnClickListener(view -> setSize());
     }
 
     @Override
@@ -159,6 +158,12 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
         LiveConfig.get().setHome(item);
     }
 
+    private boolean onVersion(boolean dev) {
+        if (dev) Updater.get().force().dev().start();
+        else Updater.get().force().start();
+        return true;
+    }
+
     private void setPlayer() {
         int index = Prefers.getPlayer();
         String[] array = ResUtil.getStringArray(R.array.select_player);
@@ -185,6 +190,14 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
         String[] array = ResUtil.getStringArray(R.array.select_scale);
         Prefers.putScale(index = index == array.length - 1 ? 0 : ++index);
         mBinding.scaleText.setText(array[index]);
+    }
+
+    private void setSize() {
+        int index = Prefers.getSize();
+        String[] array = ResUtil.getStringArray(R.array.select_size);
+        Prefers.putSize(index = index == array.length - 1 ? 0 : ++index);
+        mBinding.sizeText.setText(array[index]);
+        RefreshEvent.size();
     }
 
     private void setWallDefault() {
